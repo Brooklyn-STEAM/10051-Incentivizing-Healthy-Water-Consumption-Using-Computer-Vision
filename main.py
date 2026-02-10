@@ -1,6 +1,9 @@
-from flask import Flask, redirect, render_template
+from flask import Flask, render_template, redirect
 
 import pymysql
+
+from dynaconf import Dynaconf
+
 
 app = Flask(__name__)
 
