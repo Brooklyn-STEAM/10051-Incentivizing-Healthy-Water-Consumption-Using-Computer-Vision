@@ -52,3 +52,7 @@ def logout():
     logout_user()
     flash("You Have Been Logged Out! Thanks For Shopping")
     return redirect("/login")
+
+@app.route('/register', methods=["POST", "GET"])
+def register():
+ return render_template("register.html.jinja")
