@@ -17,21 +17,6 @@ def index():
 
 @app.route("/login", methods = ["POST", "GET"])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s" , (username) )
-        result = cursor.fetchone()
-        connection.close()
-        if result is None:
-            flash("No user found")
-        elif password != result["Password"]:
-            flash("Incorrect password")
-        else:
-            login_user(User(result))
-            return redirect('/browse')
     return render_template("login.html.jinja")
 
 
