@@ -11,7 +11,7 @@ config = Dynaconf(settings_file = ["settings.toml"])
 
 login_manager = LoginManager( app )
 
-@app.route("/")
+@app.route("/homepage")
 def index():
     return render_template("homepage.html.jinja")
 
