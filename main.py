@@ -12,7 +12,7 @@ config = Dynaconf(settings_file = ["settings.toml"])
 
 @app.route("/")
 def index():
-    return render_template("homepage.html.jinja")
+ return render_template("homepage.html.jinja")
 
 
 @app.route("/login", methods = ["POST", "GET"])
