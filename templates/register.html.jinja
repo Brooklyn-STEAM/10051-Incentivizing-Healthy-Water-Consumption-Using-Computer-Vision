@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="bg-blue-50">
+
+  {% include "components/navbar.html.jinja" %}
+
+  {% for message in get_flashed_messages() %}
+    <div class="text-red-600 text-center mt-2">{{ message }}</div>
+  {% endfor %}
+
+  <form method="POST" class="flex flex-col gap-4 max-w-md mx-auto p-6 bg-white shadow-lg rounded-xl mt-6">
+
+    <h1 class="text-2xl font-bold text-center text-blue-600">Create Account & Set Your Water Goal</h1>
+
+    
+    <label for="name">Username</label>
+    <input
+      type="text"
+      name="name"
+      id="name"
+      required
+      placeholder="Enter your username"
+      class="border px-3 py-2 rounded"
+    >
+
+  
+    <label for="email">Email</label>
+    <input
+      type="email"
+      name="email"
+      id="email"
+      required
+      placeholder="example@domain.com"
+      class="border px-3 py-2 rounded"
+    >
+
+  
+    <label for="password">Password</label>
+    <input
+      type="password"
+      name="password"
+      id="password"
+      required
+      placeholder="Enter a secure password"
+      class="border px-3 py-2 rounded"
+    >
+
+
+    <label for="confirm_password">Confirm Password</label>
+    <input
+      type="password"
+      name="confirm_password"
+      id="confirm_password"
+      required
+      placeholder="Re-enter your password"
+      class="border px-3 py-2 rounded"
+    >
+
+
+    <label for="birthday">Birthday</label>
+    <input
+      type="date"
+      name="birthday"
+      id="birthday"
+      required
+      class="border px-3 py-2 rounded"
+    >
+
+  
+    <label for="weight">Weight (lbs)</label>
+    <input
+      type="number"
+      name="weight"
+      id="weight"
+      required
+      placeholder="Enter your weight in lbs"
+      class="border px-3 py-2 rounded"
+    >
+
+
+    <label class="font-medium">Sex</label>
+    <div class="flex gap-4">
+      <label>
+        <input type="radio" name="sex" value="female" required>
+        Female
+      </label>
+
+      <label>
+        <input type="radio" name="sex" value="male">
+        Male
+      </label>
+
+      <label>
+        <input type="radio" name="sex" value="prefer_not">
+        Prefer not to say
+      </label>
+    </div>
+
+    <label class="font-medium">How active are you?</label>
+    <div class="flex flex-col gap-1">
+      <label>
+        <input type="radio" name="activity_level" value="not_active" required>
+        Not very active
+      </label>
+
+      <label>
+        <input type="radio" name="activity_level" value="moderate">
+        Moderately active
+      </label>
+
+      <label>
+        <input type="radio" name="activity_level" value="very_active">
+        Very active
+      </label>
+    </div>
+
+   
+    <label class="font-medium">How much do you exercise daily?</label>
+    <div class="flex flex-col gap-1">
+      <label>
+        <input type="radio" name="exercise" value="0_30" required>
+        0–30 minutes
+      </label>
+
+      <label>
+        <input type="radio" name="exercise" value="30_60">
+        30–60 minutes
+      </label>
+
+      <label>
+        <input type="radio" name="exercise" value="1_2">
+        1–2 hours
+      </label>
+
+      <label>
+        <input type="radio" name="exercise" value="2_plus">
+        2+ hours
+      </label>
+    </div>
+
+   
+    <label class="font-medium">What’s the usual weather like?</label>
+    <div class="flex gap-4">
+      <label>
+        <input type="radio" name="climate" value="cold" required>
+        Cold
+      </label>
+
+      <label>
+        <input type="radio" name="climate" value="mild">
+        Mild
+      </label>
+
+      <label>
+        <input type="radio" name="climate" value="hot">
+        Hot
+      </label>
+    </div>
+
+    <label class="font-medium">Health considerations (optional)</label>
+    <div class="flex flex-col gap-1">
+      <label>
+        <input type="checkbox" name="health" value="kidney">
+        Kidney problems
+      </label>
+
+      <label>
+        <input type="checkbox" name="health" value="heart">
+        Heart condition
+      </label>
+
+      <label>
+        <input type="checkbox" name="health" value="sick">
+        Currently sick
+      </label>
+
+      <label>
+        <input type="checkbox" name="health" value="none">
+        None of the above
+      </label>
+    </div>
+
+    <p class="text-xs text-gray-500">
+      If you have a medical condition affecting fluid intake, follow your doctor’s advice.
+    </p>
+
+    <button
+      type="submit"
+      class="bg-blue-600 text-white rounded px-4 py-2 mt-4 hover:bg-blue-700"
+    >
+      Register & Calculate Goal
+    </button>
+
+    <a href="/login"
+       class="block text-center text-blue-600 font-medium hover:underline">
+       Have an account? Login
+    </a>
+
+  </form>
+
+  </body>
+</html>

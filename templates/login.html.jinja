@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+<body>
+    {% include "components/navbar.html.jinja" %}
+    {%for message in get_flashed_messages()%}
+        <li>{{message}}</li>
+    {% endfor %}
+
+    <div class="flex items-center min-h-screen bg-white">
+        <div class="container mx-auto">
+            <div class="max-w-md mx-auto my-10">
+                <div class="text-center">
+                    <h1 class="my-3 text-3xl font-semibold text-blue-600">Login</h1>
+                    <p class="text-blue-600">Login to access your account</p>
+                </div>
+
+                <div class="m-7">
+                    <form action="">
+                        
+                        <!-- Username -->
+                        <div class="mb-6">
+                            <label for="username" class="block mb-2 text-sm text-blue-600">
+                                Username
+                            </label>
+                            <input
+                                type="text"
+                                name="username"
+                                id="username"
+                                placeholder="Your username"
+                                class="w-full px-3 py-2 border border-blue-300 rounded-md 
+                                    focus:outline-none focus:ring-2 focus:ring-blue-400 
+                                    focus:border-blue-500"
+                            />
+                        </div>
+
+                        <!-- Password -->
+                        <div class="mb-6">
+                            <div class="flex justify-between mb-2">
+                                <label for="password" class="text-sm text-blue-600">
+                                    Password
+                                </label>
+                                <a href="#!" class="text-sm text-blue-600 hover:underline">
+                                    Forgot password?
+                                </a>
+                            </div>
+
+                            <input
+                                type="password"
+                                name="password"
+                                id="password"
+                                placeholder="Your Password"
+                                class="w-full px-3 py-2 border border-blue-300 rounded-md 
+                                    focus:outline-none focus:ring-2 focus:ring-blue-400 
+                                    focus:border-blue-500"
+                            />
+                        </div>
+
+                        <!-- Button -->
+                        <div class="mb-6">
+                            <button
+                                type="submit"
+                                class="w-full px-3 py-3 text-white bg-blue-600 rounded-md 
+                                    hover:bg-blue-700 transition duration-200"
+                            >
+                                Login
+                            </button>
+                        </div>
+
+                        <!-- Register -->
+                        <p class="text-sm text-center text-blue-600">
+                            Don't have an account yet?
+                            <a href="/register" class="hover:underline font-medium">
+                                Register
+                            </a>
+                        </p>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

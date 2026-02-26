@@ -9,6 +9,18 @@ app = Flask(__name__)
 
 config = Dynaconf(settings_file = ["settings.toml"])
 
+
 @app.route("/")
 def index():
-    return render_template("homepage.html.jinja")
+ return render_template("homepage.html.jinja")
+
+
+@app.route("/login", methods = ["POST", "GET"])
+def login():
+    return render_template("login.html.jinja")
+
+
+
+@app.route('/register', methods=["POST", "GET"])
+def register():
+ return render_template("register.html.jinja")
