@@ -2,6 +2,8 @@ from flask import Flask, render_template, redirect, request, flash, abort, sessi
 
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
 
+from werkzeug.utils import secure_filename
+
 import pymysql # Import the PyMySQL library for MySQL database connection
 
 import base64 # used for images
@@ -35,6 +37,7 @@ class User(UserMixin):
         self.name = result['Name']
         self.email = result['Email']
         self.id = result['ID']
+        self.profile_image = result['profile_image']
 
     def get_id(self):
         return str(self.id)
@@ -232,15 +235,50 @@ def health_data():
 
 
 #for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Accountpage")
+@app.route("/Accountpage",methods=["GET", "POST"])
+@login_required
 def account_page():
-    return render_template("Accountpage.html.jinja")
+    if request.method == "POST":
+        file = request.files["picture"]
+        if file:
+            filename = secure_filename(file.filename)
+
+            # save file to static folder
+            file.save(os.path.join("static/profile_pics", filename))
+
+            # store filename (example: simple user object)
+            current_user.profile_image = filename
+            connection = connect_db()
+        cursor = connection.cursor()
+        cursor.execute(""" UPDATE User
+                      SET profile_image =%s
+                      WHERE id = %s""", (filename, current_user.id))
+
+        connection.commit()
+
+                
+    
+    return render_template("Accountpage.html.jinja",User=current_user.id)
+
+
+
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
 @login_required
-def friend_list():
-    return render_template("friends.html.jinja")
+def friends_list():
+     connection = connect_db()
+     cursor = connection.cursor()
+     cursor.execute("""
+            SELECT User.ID, User.username, User.is_online
+            FROM friendships
+            JOIN User 
+            ON User.ID = friendships.user_id2
+           WHERE friendships.user_id1 = %s;
+    """,     (current_user.id,))
+     results = cursor.fetchall()
+     connection.close()
+     return render_template("friends.html.jinja",friends=results)
 
 
 
