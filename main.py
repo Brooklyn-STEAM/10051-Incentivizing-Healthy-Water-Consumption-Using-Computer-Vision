@@ -86,7 +86,7 @@ def login():
             flash("Incorrect password!")
         else:
             login_user(User(result))
-            return redirect('/browse')
+            return redirect('/Accountpage')
        
         
     return render_template("login.html.jinja")
@@ -141,5 +141,16 @@ def wheel():
         connection.close()
 
         return render_template("Wheelofdrinks.html.jinja")
+@app.route("/Accountpage")
+def account_page():
+
+    return render_template("Accountpage.html.jinja")
+
+@app.route('/friends')
+def friend_list():
+    
+    return render_template("friends.html.jinja")
+
+
 
 
