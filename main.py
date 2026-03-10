@@ -1,31 +1,59 @@
 from flask import Flask, render_template, redirect, request, flash, abort # Import necessary functions and classes from the Flask library for web application development, including rendering templates, handling redirects, processing requests, flashing messages, and aborting requests
 
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user # Import necessary functions and classes from the Flask-Login library for user authentication and session management
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
 
 import pymysql # Import the PyMySQL library for MySQL database connection
 
 from dynaconf import Dynaconf # Import the Dynaconf library for configuration management
 
 
+config = Dynaconf(settings_files=['settings.toml'])
+
 app = Flask(__name__)# Create a Flask application instance
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login" 
 app.secret_key = "nchdwnuhwwenedwn"
+
+class User(UserMixin):
+    def __init__(self, user_data):
+        self.id = user_data["ID"]
+        self.name = user_data["Name"]
+        self.email = user_data["Email"]
 
 config = Dynaconf(settings_file = ["settings.toml"]) # Load the configuration from the settings.toml file
 
 
+@login_manager.user_loader
+def load_user(user_id):
 
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT * FROM User WHERE ID = %s", (user_id,))
+    user = cursor.fetchone()
+
+    connection.close()
+
+    if user:
+        return User(user)
+
+    return None
 
 #connect to database------------------------------------------------------------------------------------------------
 def connect_db():
     conn = pymysql.connect(
-        host=config.host,
-        user=config.username,
-        password=config.password,
+        host="db.steamcenter.tech",
+        user=config.USER,
+        password=config.PASSWORD,
         database="daily_drip",
         autocommit=True,
         cursorclass=pymysql.cursors.DictCursor
     )
     return conn
+
+
 
 #All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
 @app.route("/")
@@ -68,41 +96,37 @@ def login():
 def register():
 
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
-
+        name = request.form["name"]
+        username = request.form["username"]
+        email = request.form["email"]
+        password = request.form["password"]
+        confirm_password = request.form["confirm_password"]
+        
         if password != confirm_password:
             flash("Passwords do not match!")
             return render_template("register.html.jinja")
 
-        if len(password) < 8:
+        elif len(password) < 8:
             flash("Password must be at least 8 characters long")
             return render_template("register.html.jinja")
+        else:
+            connection = connect_db()
+            cursor = connection.cursor()
+            try: 
+                 # Insert new user
+                cursor.execute("""
+                INSERT INTO User (Name, Email, Password, Username)
+                VALUES (%s, %s, %s, %s)
+                    """, (name, email, password, username))
+                connection.close()
 
-        connection = connect_db()
-        cursor = connection.cursor()
-
-        # Check if email already exists
-        cursor.execute("SELECT * FROM User WHERE Email = %s", (email,))
-        existing_user = cursor.fetchone()
-
-        if existing_user:
-            flash("Email already registered!")
-            connection.close()
-            return render_template("register.html.jinja")
-
-        # Insert new user
-        cursor.execute("""
-            INSERT INTO User (Username, Email, Password)
-            VALUES (%s, %s, %s)
-        """, (name, email, password))
-
-        connection.close()
-
-        flash("Account created successfully!")
-        return redirect("/login")
+            except pymysql.err.IntegrityError:
+                        flash("Email already registered!")
+                        connection.close()
+                        return render_template("register.html.jinja")
+            else:
+                        flash("Account created successfully!")
+                        return redirect("/login")
 
     return render_template("register.html.jinja")
 #for the wheel of drinks page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -114,6 +138,8 @@ def wheel():
         cursor.execute("SELECT Name FROM Recipe")
         Rewards = cursor.fetchall() 
 
+        connection.close()
+
         return render_template("Wheelofdrinks.html.jinja")
 @app.route("/Accountpage")
 def account_page():
@@ -124,7 +150,6 @@ def account_page():
 def friend_list():
     
     return render_template("friends.html.jinja")
-
 
 
 
