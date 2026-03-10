@@ -115,6 +115,17 @@ def wheel():
         Rewards = cursor.fetchall() 
 
         return render_template("Wheelofdrinks.html.jinja")
+@app.route("/Accountpage")
+def account_page():
+
+    return render_template("Accountpage.html.jinja")
+
+@app.route('/friends')
+def friend_list():
+    
+    return render_template("friends.html.jinja")
+
+
 
 
 
