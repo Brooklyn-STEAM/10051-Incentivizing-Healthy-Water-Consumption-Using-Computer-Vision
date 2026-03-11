@@ -24,8 +24,8 @@ class User(UserMixin):
 
 config = Dynaconf(settings_file = ["settings.toml"]) # Load the configuration from the settings.toml file
 
-
-@login_manager.user_loader
+# Define a user loader function for Flask-Login to load a user from the database based on the user ID stored in the session. This function connects to the database, retrieves the user data, and returns a User object if found, or None if not found.
+@login_manager.user_loader 
 def load_user(user_id):
 
     connection = connect_db()
