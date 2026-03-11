@@ -6,6 +6,8 @@ import pymysql # Import the PyMySQL library for MySQL database connection
 
 from dynaconf import Dynaconf # Import the Dynaconf library for configuration management
 
+from ai_model import predict_volume  # import the AI function
+
 
 config = Dynaconf(settings_files=['settings.toml'])
 
@@ -152,5 +154,31 @@ def friend_list():
     return render_template("friends.html.jinja")
 
 
+#for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
 
+    file = request.files["file"]
+    predicted_volume = predict_volume(file)
+    return jsonify({"predicted_volume": predicted_volume})
 
+#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/tracker")  
+def tracker():
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    tracker_data = {
+        "Monday": 2,
+        "Tuesday": 5,
+        "Wednesday": 2,
+        "Thursday": 0,
+        "Friday": 0,
+        "Saturday": 0,
+        "Sunday": 0take
+    }
+    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
+#for the camera (incomplete) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/camera")
+def camera():
+    return render_template("camera.html.jinja")

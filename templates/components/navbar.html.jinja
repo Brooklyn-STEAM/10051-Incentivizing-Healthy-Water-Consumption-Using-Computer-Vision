@@ -1,53 +1,81 @@
+
 <nav class="fixed top-0 left-0 h-full w-64 bg-sky-100 shadow-lg border-r border-sky-200 z-20">
 
-<div class="flex flex-col h-full p-6">
+  <div class="flex flex-col h-full p-6">
 
-    
+    <!-- Logo -->
     <div class="mb-8">
-      <h1 class="text-2xl font-extrabold text-gray-900">
-     
-     <img src =/static/logo.png> 
-      
-</div>
-<a class="text-2xl font-bold text-blue-400" href="/Accountpage"><svg class = "inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><path fill="currentColor" d="M6.196 17.485q1.275-.918 2.706-1.451Q10.332 15.5 12 15.5t3.098.534t2.706 1.45q.99-1.025 1.593-2.42Q20 13.667 20 12q0-3.325-2.337-5.663T12 4T6.337 6.338T4 12q0 1.667.603 3.064q.603 1.396 1.593 2.42m3.672-5.852Q9 10.764 9 9.5t.868-2.132T12 6.5t2.132.868T15 9.5t-.868 2.132T12 12.5t-2.132-.868M12 21q-1.883 0-3.525-.701t-2.858-1.916t-1.916-2.858T3 12t.701-3.525t1.916-2.858q1.216-1.215 2.858-1.916T12 3t3.525.701t2.858 1.916t1.916 2.858T21 12t-.701 3.525t-1.916 2.858q-1.216 1.215-2.858 1.916T12 21"/></svg>Account</h1>
- 
-<br>
+      <img src="/static/logo.png" alt="Logo" class="w-40 mx-auto">
+    </div>
 
-<h1 class="text-2xl font-bold text-blue-400"><svg class ="inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M5 13a7 7 0 1 0 14 0a7 7 0 1 0-14 0"/><path d="M12 10v3h2M7 4L4.25 6M17 4l2.75 2"/></g></svg>Tracker</h1>
+    <!-- Account -->
+    <a href="/account" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M6.196 17.485q1.275-.918 2.706-1.451Q10.332 15.5 12 15.5t3.098.534t2.706 1.45q.99-1.025 1.593-2.42Q20 13.667 20 12q0-3.325-2.337-5.663T12 4T6.337 6.338T4 12q0 1.667.603 3.064q.603 1.396 1.593 2.42m3.672-5.852Q9 10.764 9 9.5t.868-2.132T12 6.5t2.132.868T15 9.5t-.868 2.132T12 12.5t-2.132-.868M12 21q-1.883 0-3.525-.701t-2.858-1.916t-1.916-2.858T3 12t.701-3.525t1.916-2.858q1.216-1.215 2.858-1.916T12 3t3.525.701t2.858 1.916t1.916 2.858T21 12t-.701 3.525t-1.916 2.858q-1.216 1.215-2.858 1.916T12 21"/>
+      </svg>
+      Account
+    </a>
 
-<br>
+    <!-- Tracker -->
+    <a href="/tracker" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+          <path d="M5 13a7 7 0 1 0 14 0a7 7 0 1 0-14 0"/>
+          <path d="M12 10v3h2M7 4L4.25 6M17 4l2.75 2"/>
+        </g>
+      </svg>
+      Tracker
+    </a>
 
-<h1 class="text-2xl font-bold text-blue-400"><svg class ="inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><path fill="currentColor" d="m16 8.41l-4.5-4.5L4.41 11H6v8h3v-6h5v6h3v-8h1.59L17 9.41V6h-1zM2 12l9.5-9.5L15 6V5h3v4l3 3h-3v8h-5v-6h-3v6H5v-8z"/></svg>Home</h1>
+    <!-- Home -->
+    <a href="/" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <path fill="currentColor" d="m16 8.41l-4.5-4.5L4.41 11H6v8h3v-6h5v6h3v-8h1.59L17 9.41V6h-1zM2 12l9.5-9.5L15 6V5h3v4l3 3h-3v8h-5v-6h-3v6H5v-8z"/>
+      </svg>
+      Home
+    </a>
 
-<br>
+    <!-- Leaderboard -->
+    <a href="/leaderboard" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M4 19h4v-8H4zm6 0h4V5h-4zm6 0h4v-6h-4zM2 21V9h6V3h8v8h6v10z"/>
+      </svg>
+      Leaderboard
+    </a>
 
-<h1 class="text-2xl font-bold text-blue-400"><svg class="inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><path fill="currentColor" d="M4 19h4v-8H4zm6 0h4V5h-4zm6 0h4v-6h-4zM2 21V9h6V3h8v8h6v10z"/></svg>Leaderboard</h1>
+    <!-- Friends List -->
+    <a href="/friends" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <path fill="currentColor" fill-rule="evenodd" d="M18.75 10.75V8h1.5v2.75H23v1.5h-2.75V15h-1.5v-2.75H16v-1.5zm-10.918 1.6C7.096 11.478 6.5 9.85 6.5 8.71V7a4 4 0 0 1 8 0v1.71c0 1.14-.6 2.773-1.332 3.642l-.361.428c-.59.699-.406 1.588.419 1.99l5.66 2.762c.615.3 1.114 1.093 1.114 1.783v.687a1 1 0 0 1-1.001.998H2a1 1 0 0 1-1-.998v-.687c0-.685.498-1.483 1.114-1.784l5.66-2.762c.821-.4 1.012-1.288.42-1.99z"/>
+      </svg>
+      Friends List
+    </a>
 
-<br>
+    <!-- Create a group -->
+    <a href="/create-group" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 50 50">
+        <path fill="currentColor" d="M25 42c-9.4 0-17-7.6-17-17S15.6 8 25 8s17 7.6 17 17s-7.6 17-17 17m0-32c-8.3 0-15 6.7-15 15s6.7 15 15 15s15-6.7 15-15s-6.7-15-15-15"/>
+        <path fill="currentColor" d="M16 24h18v2H16z"/>
+        <path fill="currentColor" d="M24 16h2v18h-2z"/>
+      </svg>
+      Create a Group
+    </a>
 
+    <!-- Drippy Challenge -->
+    <a href="/drippy-challenge" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m15.728 3l-2.796 6.75m0 0l1.32 1.317m-1.32-1.317l-1.865-.003M20.91 8.31l-1.71.708m-4.947 2.049l4.947-2.05m-4.947 2.05l-.003 1.865M21 15.728l-6.75-2.796m0 0l-1.317 1.32m2.758 6.658l-.709-1.71m-2.049-4.947l2.05 4.947m-2.05-4.947l-1.865-.003m0 0L8.272 21m2.796-6.75l-1.32-1.317m0 0L4.8 14.983m4.947-2.05l.003-1.865m-6.66 4.623l1.71-.709m4.95-3.914L3 8.272m6.75 2.796l1.317-1.32m0 0L9.017 4.8M8.31 3.09l.708 1.71m0 0A7.77 7.77 0 0 0 4.8 9.018a7.77 7.77 0 0 0 0 5.964M9.018 4.8a7.77 7.77 0 0 1 5.964 0A7.77 7.77 0 0 1 19.2 9.018m0 0a7.77 7.77 0 0 1 0 5.964a7.77 7.77 0 0 1-4.218 4.218m0 0a7.77 7.77 0 0 1-5.964 0A7.77 7.77 0 0 1 4.8 14.982"/>
+      </svg>
+      Drippy Challenge
+    </a>
 
-<h1 class="text-2xl font-bold text-blue-400"><svg class="inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M18.75 10.75V8h1.5v2.75H23v1.5h-2.75V15h-1.5v-2.75H16v-1.5zm-10.918 1.6C7.096 11.478 6.5 9.85 6.5 8.71V7a4 4 0 0 1 8 0v1.71c0 1.14-.6 2.773-1.332 3.642l-.361.428c-.59.699-.406 1.588.419 1.99l5.66 2.762c.615.3 1.114 1.093 1.114 1.783v.687a1 1 0 0 1-1.001.998H2a1 1 0 0 1-1-.998v-.687c0-.685.498-1.483 1.114-1.784l5.66-2.762c.821-.4 1.012-1.288.42-1.99z"/></svg>Friends list</h1>
+    <!-- Gatcha System -->
+    <a href="/gatcha" class="flex items-center mb-6 text-2xl font-bold text-blue-400 hover:text-blue-600">
+      <svg class="inline mr-2" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24">
+        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.8 14.982a7.77 7.77 0 0 1 5.964 0a7.77 7.77 0 0 1 4.218-4.218a7.77 7.77 0 0 1 5.964 0"/>
+      </svg>
+      Gatcha System
+    </a>
 
-<br>
-
-<h1 class="text-2xl font-bold text-blue-400"><svg class="inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 50 50"><path fill="currentColor" d="M25 42c-9.4 0-17-7.6-17-17S15.6 8 25 8s17 7.6 17 17s-7.6 17-17 17m0-32c-8.3 0-15 6.7-15 15s6.7 15 15 15s15-6.7 15-15s-6.7-15-15-15"/><path fill="currentColor" d="M16 24h18v2H16z"/><path fill="currentColor" d="M24 16h2v18h-2z"/></svg>Create a group</h1>
-
-<br>
-
-<h1 class="text-2xl font-bold text-blue-400"><svg class="inline" xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><g fill="currentColor"><path d="M12 6c-.268 0-.46.105-.525.143c-.086.05-.151.103-.19.137a2 2 0 0 0-.194.2c-.1.12-.21.268-.317.425c-.219.32-.479.745-.729 1.199c-.249.454-.5.957-.69 1.433C9.178 9.977 9 10.518 9 11a3 3 0 1 0 6 0c0-.482-.178-1.023-.355-1.463c-.19-.476-.441-.98-.69-1.433c-.25-.454-.51-.879-.729-1.199a5 5 0 0 0-.317-.425a2 2 0 0 0-.194-.2a1.2 1.2 0 0 0-.19-.137A1.05 1.05 0 0 0 12 6"/><path fill-rule="evenodd" d="M6 2a1 1 0 0 0-.998 1.067L6.078 19.2A3 3 0 0 0 9.07 22h5.858a3 3 0 0 0 2.993-2.8l1.076-16.133A1 1 0 0 0 18 2zm1.869 14l-.8-12h9.862l-.8 12z" clip-rule="evenodd"/></g></svg>Drippy Challenge</h1>
-
-<br>
-
-<h1 class="text-2xl font-bold text-blue-400"><svg class="inline"xmlns="http://www.w3.org/2000/svg" width="25" height="50" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m15.728 3l-2.796 6.75m0 0l1.32 1.317m-1.32-1.317l-1.865-.003M20.91 8.31l-1.71.708m-4.947 2.049l4.947-2.05m-4.947 2.05l-.003 1.865M21 15.728l-6.75-2.796m0 0l-1.317 1.32m2.758 6.658l-.709-1.71m-2.049-4.947l2.05 4.947m-2.05-4.947l-1.865-.003m0 0L8.272 21m2.796-6.75l-1.32-1.317m0 0L4.8 14.983m4.947-2.05l.003-1.865m-6.66 4.623l1.71-.709m4.95-3.914L3 8.272m6.75 2.796l1.317-1.32m0 0L9.017 4.8M8.31 3.09l.708 1.71m0 0A7.77 7.77 0 0 0 4.8 9.018a7.77 7.77 0 0 0 0 5.964M9.018 4.8a7.77 7.77 0 0 1 5.964 0A7.77 7.77 0 0 1 19.2 9.018m0 0a7.77 7.77 0 0 1 0 5.964a7.77 7.77 0 0 1-4.218 4.218m0 0a7.77 7.77 0 0 1-5.964 0A7.77 7.77 0 0 1 4.8 14.982"/></svg>Gatcha system</h1>
-
-
-
-
-
-
-
-
-
-
-
+  </div>
 </nav>
