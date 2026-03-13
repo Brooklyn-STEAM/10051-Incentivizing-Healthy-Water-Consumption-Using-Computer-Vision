@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+</head>
+
+<body class="bg-blue-50 flex items-center justify-center min-h-screen">
+<h1>Waterly Drink Machine</h1>
+{% include "components/navbar.html.jinja"%}
+
+<p>Your Points: {{ coins }}</p>
+
+<div class="machine">
+
+
+<img src="{{ url_for('static', filename='machine.png') }}">
+
+
+</div>
+
+<div>
+
+<button onclick="spin(1)">
+10 Points • 1 Pull
+</button>
+
+<button onclick="spin(5)">
+50 Points • 5 Pulls
+</button>
+
+<button onclick="spin(10)">
+100 Points • 10 Pulls
+</button>
+
+</div>
+
+
+<script>
+
+function spin(amount){
+
+fetch("/gacha_spin",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+plays:amount
+})
+})
+.then(res=>res.json())
+.then(data=>{
+
+window.location.href="/results"
+
+})
+
+}
+
+</script>
+
+</body>
+
+</html>
