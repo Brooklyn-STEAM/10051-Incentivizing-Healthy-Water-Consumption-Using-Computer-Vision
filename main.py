@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, flash, abort # Import necessary functions and classes from the Flask library for web application development, including rendering templates, handling redirects, processing requests, flashing messages, and aborting requests
+from flask import Flask, render_template, redirect, request, flash, abort, session # Import necessary functions and classes from the Flask library for web application development, including rendering templates, handling redirects, processing requests, flashing messages, aborting requests, and managing sessions
 
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
 
@@ -55,7 +55,7 @@ def connect_db():
 
 
 
-#All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
+# Define a route for the homepage of the web application, which renders the "homepage.html.jinja" template when accessed.
 @app.route("/")
 def index():
     return render_template("homepage.html.jinja")
@@ -65,32 +65,26 @@ def index():
 def login():
     if request.method == "POST":
 
-        email = request.form.get('email')
+        username = request.form.get('username')
         password = request.form.get('password')
 
         connection = connect_db()
-
         cursor = connection.cursor()
 
-        cursor.execute("SELECT * FROM User WHERE Email = %s", (email,))
-
-        print(cursor)
-
+        cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
         result = cursor.fetchone()
 
         connection.close()
 
         if result is None:
-            flash("Email not registered!")
+            flash("Username not registered!")
         elif password != result['Password']:
             flash("Incorrect password!")
         else:
             login_user(User(result))
             return redirect('/Accountpage')
-       
-        
-    return render_template("login.html.jinja")
 
+    return render_template("login.html.jinja")
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -130,27 +124,95 @@ def register():
 
     return render_template("register.html.jinja")
 #for the wheel of drinks page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Wheelofdrinks")
-def wheel():
- #Connect to the database and retrieve all the drink names from the Drink table, then render the Wheelofdrinks.html.jinja template with the retrieved drink names passed as a variable for display on the page.
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("SELECT Name FROM Recipe")
-        Rewards = cursor.fetchall() 
+@app.route("/wheelofdrinks")
+@login_required
+def wheelofdrinks():
 
-        connection.close()
+    connection = connect_db()
+    cursor = connection.cursor()
 
-        return render_template("Wheelofdrinks.html.jinja")
+    # get total points from water consumption
+    cursor.execute("""
+        SELECT SUM(Points) AS total_points
+        FROM `Water Consumption`
+        WHERE UserID = %s
+    """, (current_user.id,))
+
+    result = cursor.fetchone()
+
+    points = result["total_points"] if result["total_points"] else 0
+
+    return render_template(
+        "wheelofdrinks.html.jinja",
+        coins=points
+    )
+
+#for the gacha spin page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/gacha_spin", methods=["POST"])
+@login_required
+def gacha_spin():
+
+    import random
+
+    data = request.json
+    plays = int(data["plays"])
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    # get random rewards from Rewards table
+    cursor.execute("""
+        SELECT ID, Name, Image
+        FROM Rewards
+        ORDER BY RAND()
+        LIMIT %s
+    """, (plays,))
+
+    rewards = cursor.fetchall()
+
+    # save rewards to UserRewards
+    for reward in rewards:
+
+        cursor.execute("""
+        INSERT INTO UserRewards (UserID, RewardsID)
+        VALUES (%s, %s)
+        """, (current_user.id, reward["ID"]))
+
+    session["rewards"] = rewards
+
+    return {"success": True}
+
+#for the results page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/results")
+@login_required
+def results():
+
+    rewards = session.get("rewards", [])
+
+    return render_template(
+        "results.html.jinja",
+        rewards=rewards
+    )
+
+
+#for the account page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/Accountpage")
 def account_page():
 
     return render_template("Accountpage.html.jinja")
 
+#for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
 def friend_list():
     
     return render_template("friends.html.jinja")
 
 
+#for the logout page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
 
 
