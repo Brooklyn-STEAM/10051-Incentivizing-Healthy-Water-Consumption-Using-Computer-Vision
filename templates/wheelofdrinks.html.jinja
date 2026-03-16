@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 
@@ -8,38 +9,50 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 
+<title>Waterly Drink Machine</title>
+
 </head>
 
-<body class="bg-blue-50 flex items-center justify-center min-h-screen">
-<h1>Waterly Drink Machine</h1>
-{% include "components/navbar.html.jinja"%}
+<body 
+	class="
+		bg-blue-50 
+		flex 
+		flex-col 
+		items-center 
+		justify-center 
+		min-h-screen 
+		gap-6
+	">
 
-<p>Your Points: {{ coins }}</p>
+{% include "components/navbar.html.jinja" ignore missing %}
+
+<h1 class="text-3xl font-bold text-blue-700">
+Waterly Drink Machine
+</h1>
+
+<p class="text-xl">
+Your Points: <span class="font-bold text-blue-600">{{ coins | default(0) }}</span>
+</p>
 
 <div class="machine">
-
-
-<img src="{{ url_for('static', filename='machine.png') }}">
-
-
+<img src="{{ url_for('static', filename='machine.png') }}" class="w-72" onerror="this.src='/static/fallback.png';">
 </div>
 
-<div>
+<div class="flex gap-4">
 
-<button onclick="spin(1)">
+<button onclick="spin(1)" class="bg-blue-500 text-white px-4 py-2 rounded">
 10 Points • 1 Pull
 </button>
 
-<button onclick="spin(5)">
+<button onclick="spin(5)" class="bg-blue-500 text-white px-4 py-2 rounded">
 50 Points • 5 Pulls
 </button>
 
-<button onclick="spin(10)">
+<button onclick="spin(10)" class="bg-blue-500 text-white px-4 py-2 rounded">
 100 Points • 10 Pulls
 </button>
 
 </div>
-
 
 <script>
 
@@ -54,12 +67,25 @@ body:JSON.stringify({
 plays:amount
 })
 })
-.then(res=>res.json())
-.then(data=>{
+.then(res => {
+if (!res.ok) {
+throw new Error("Network response was not ok");
+}
+return res.json();
+})
+.then(data => {
 
+if(data.success){
 window.location.href="/results"
+}
+else{
+alert(data.message);
+}
 
 })
+.catch(error => {
+alert("An error occurred: " + error.message);
+});
 
 }
 
@@ -68,3 +94,4 @@ window.location.href="/results"
 </body>
 
 </html>
+

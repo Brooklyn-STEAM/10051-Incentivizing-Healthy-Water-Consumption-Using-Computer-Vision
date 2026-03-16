@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 
@@ -8,21 +9,27 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 
+<title>Your Drinks</title>
+
 </head>
 
-<body class="bg-blue-50 flex items-center justify-center min-h-screen">
+<body class="bg-blue-50 flex flex-col items-center justify-center min-h-screen gap-6">
 
-<<h1>Your Drinks</h1>
+<h1 class="text-3xl font-bold text-blue-700">
+Your Drinks
+</h1>
 
-<div style="display:flex; gap:20px; flex-wrap:wrap;">
+<div class="flex gap-6 flex-wrap justify-center">
 
 {% for drink in rewards %}
 
-<div style="text-align:center">
+<div class="bg-white p-4 rounded shadow text-center">
 
-<img src="{{ drink.Image }}" width="120">
+<img src="{{ drink.Image }}" class="w-28 mx-auto">
 
-<p>{{ drink.Name }}</p>
+<p class="font-semibold mt-2">
+{{ drink.Name }}
+</p>
 
 </div>
 
@@ -30,11 +37,11 @@
 
 </div>
 
-<br>
-
-<a href="/wheelofdrinks">Pull Again</a>
-
+<a href="/wheelofdrinks" class="bg-blue-500 text-white px-4 py-2 rounded">
+Pull Again
+</a>
 
 </body>
-</script>
+
 </html>
+```

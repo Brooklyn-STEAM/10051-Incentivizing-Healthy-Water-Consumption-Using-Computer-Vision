@@ -133,7 +133,6 @@ def wheelofdrinks():
     connection = connect_db()
     cursor = connection.cursor()
 
-    # get total points from water consumption
     cursor.execute("""
         SELECT SUM(Points) AS total_points
         FROM `Water Consumption`
@@ -141,8 +140,9 @@ def wheelofdrinks():
     """, (current_user.id,))
 
     result = cursor.fetchone()
-
     points = result["total_points"] if result["total_points"] else 0
+
+    connection.close()
 
     return render_template(
         "wheelofdrinks.html.jinja",
@@ -154,15 +154,35 @@ def wheelofdrinks():
 @login_required
 def gacha_spin():
 
-    import random
-
     data = request.json
     plays = int(data["plays"])
+
+    cost = plays * 10
 
     connection = connect_db()
     cursor = connection.cursor()
 
-    # get random rewards from Rewards table
+    # get user's points
+    cursor.execute("""
+        SELECT SUM(Points) AS total_points
+        FROM `Water Consumption`
+        WHERE UserID = %s
+    """, (current_user.id,))
+
+    result = cursor.fetchone()
+    points = result["total_points"] if result["total_points"] else 0
+
+
+    # THIS IS THE IF STATEMENT THAT CHECKS IF THE USER HAS ENOUGH POINTS TO PLAY THE GACHA SPIN. IF THE USER DOES NOT HAVE ENOUGH POINTS, IT CLOSES THE DATABASE CONNECTION AND RETURNS A JSON RESPONSE INDICATING FAILURE AND A MESSAGE STATING "Not enough points".
+    if points < cost:
+        connection.close()
+        return jsonify({
+            "success": False,
+            "message": "Not enough points"
+        })
+
+
+    # get rewards from Rewards table 
     cursor.execute("""
         SELECT ID, Name, Image
         FROM Rewards
@@ -172,7 +192,8 @@ def gacha_spin():
 
     rewards = cursor.fetchall()
 
-    # save rewards to UserRewards
+
+    # save rewards to UserRewards table
     for reward in rewards:
 
         cursor.execute("""
@@ -180,9 +201,12 @@ def gacha_spin():
         VALUES (%s, %s)
         """, (current_user.id, reward["ID"]))
 
+
     session["rewards"] = rewards
 
-    return {"success": True}
+    connection.close()
+
+    return jsonify({"success": True})
 
 #for the results page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/results")
@@ -195,8 +219,6 @@ def results():
         "results.html.jinja",
         rewards=rewards
     )
-
-
 #for the account page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/Accountpage")
 def account_page():
@@ -244,3 +266,44 @@ def tracker():
 @app.route("/camera")
 def camera():
     return render_template("camera.html.jinja")
+
+#for the health data page where users can input their health data and it will be saved to the database.----------------------------------------------------------------------------------------------------------------------
+@app.route("/healthdata", methods=["GET", "POST"])
+@login_required
+def healthdata():
+
+    if request.method == "POST":
+
+        age = request.form.get("age")
+        weight = request.form.get("weight")
+        sex = request.form.get("sex")
+        exercise = request.form.get("exercise")
+        climate = request.form.get("climate")
+
+        health = request.form.getlist("health")
+        health_string = ", ".join(health)
+
+        connection = connect_db()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        INSERT INTO `Health Data`
+        (UserID, Weight, Sex, `Daily Exercise`, `Local Weather`, `Health Considerations`)
+        VALUES (%s,%s,%s,%s,%s,%s)
+        """, (
+            current_user.id,
+            weight,
+            sex,
+            exercise,
+            climate,
+            health_string
+        ))
+
+        connection.close()
+
+        flash("Health data saved!")
+        return redirect("/Accountpage")
+
+    return render_template("healthdata.html.jinja")
+
+

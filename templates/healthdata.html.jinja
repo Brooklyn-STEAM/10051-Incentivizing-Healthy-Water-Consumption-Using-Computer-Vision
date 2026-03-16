@@ -16,16 +16,15 @@
     <div class="text-red-600 text-center mt-2">{{ message }}</div>
   {% endfor %}
 
-  <form method="POST" class="flex flex-col gap-4 max-w-md mx-auto p-6 bg-white shadow-lg rounded-xl mt-6">
+<form method="POST" action="{{ url_for('healthdata') }}" class="flex flex-col gap-4 max-w-md mx-auto p-6 bg-white shadow-lg rounded-xl mt-6">
+    <h1 class="text-2xl font-bold text-center text-blue-600">Let's create an Account Water Goal</h1>
 
-    <h1 class="text-2xl font-bold text-center text-blue-600"> Lets create Account Water Goal</h1>
 
-
-    <label for="birthday">Birthday</label>
+    <label for="age">Age</label>
     <input
-      type="date"
-      name="birthday"
-      id="birthday"
+      type="number"
+      name="age"
+      id="age"
       required
       class="border px-3 py-2 rounded"
     >
@@ -50,12 +49,12 @@
       </label>
 
       <label>
-        <input type="radio" name="sex" value="male">
+        <input type="radio" name="sex" value="male" required>
         Male
       </label>
 
       <label>
-        <input type="radio" name="sex" value="prefer_not">
+        <input type="radio" name="sex" value="prefer_not" required>
         Prefer not to say
       </label>
     </div>
@@ -63,7 +62,7 @@
     <label class="font-medium">How active are you?</label>
     <div class="flex flex-col gap-1">
       <label>
-        <input type="radio" name="activity_level" value="not_active" required>
+        <input type="radio" name="activity_level" value="not_active">
         Not very active
       </label>
 
@@ -87,17 +86,17 @@
       </label>
 
       <label>
-        <input type="radio" name="exercise" value="30_60">
+        <input type="radio" name="exercise" value="30_60" required>
         30–60 minutes
       </label>
 
       <label>
-        <input type="radio" name="exercise" value="1_2">
+        <input type="radio" name="exercise" value="1_2" required>
         1–2 hours
       </label>
 
       <label>
-        <input type="radio" name="exercise" value="2_plus">
+        <input type="radio" name="exercise" value="2_plus" required>
         2+ hours
       </label>
     </div>
@@ -111,12 +110,12 @@
       </label>
 
       <label>
-        <input type="radio" name="climate" value="mild">
+        <input type="radio" name="climate" value="mild" required>
         Mild
       </label>
 
       <label>
-        <input type="radio" name="climate" value="hot">
+        <input type="radio" name="climate" value="hot" required>
         Hot
       </label>
     </div>
@@ -139,13 +138,13 @@
       </label>
 
       <label>
-        <input type="checkbox" name="health" value="none">
+        <input type="checkbox" name="health" value="none" id="none-checkbox">
         None of the above
       </label>
     </div>
 
     <p class="text-xs text-gray-500">
-      If you have a medical condition affecting fluid intake, follow your doctor’s advice.
+      <strong class="text-red-500">If you have a medical condition affecting fluid intake, follow your doctor’s advice.</strong>
     </p>
  
     <button
