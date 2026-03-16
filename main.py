@@ -192,8 +192,7 @@ def gacha_spin():
 
     rewards = cursor.fetchall()
 
-
-    # save rewards to UserRewards table
+    # save rewards to UserRewards
     for reward in rewards:
 
         cursor.execute("""
