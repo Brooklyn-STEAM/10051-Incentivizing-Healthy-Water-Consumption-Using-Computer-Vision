@@ -11,6 +11,71 @@
 
 <body>
 
+<div class="flex items-center min-h-screen bg-white">
+ <div class="container mx-auto">
+<div class="max-w-md mx-auto my-10">
+
+
+
+
+
+
+
+
+
+
+
+
+<body class="bg-gray-100 p-4">
+    <div class=" mx-auto bg-white shadow-lg rounded-lg p-4 h-200 w-180">
+        <h1 class="text-2xl font-semibold mb-4">My Friends</h1>
+
+        <!-- Search Bar -->
+        <div class="mb-4">
+            <input type="text" id="friendSearch" onkeyup="searchFriends()" placeholder="Search friends..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <!-- Friends List -->
+        <ul id="friendsList" class="divide-y divide-gray-200">
+            {% for friend in friends %}
+                <li class="p-3 hover:bg-gray-50 flex justify-between items-center" data-name="{{ friend.name.lower() }}">
+                    <span>{{ friend.name }}</span>
+                    {% if friend.status == 'Online' %}
+                        <span class="px-2 py-0.5 text-xs font-medium text-green-800 bg-green-200 rounded-full">Online</span>
+                    {% else %}
+                        <span class="px-2 py-0.5 text-xs font-medium text-red-800 bg-red-200 rounded-full">Offline</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
 
 
 

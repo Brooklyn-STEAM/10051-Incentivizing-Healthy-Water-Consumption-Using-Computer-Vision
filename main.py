@@ -147,9 +147,29 @@ def account_page():
     return render_template("Accountpage.html.jinja")
 
 @app.route('/friends')
-def friend_list():
+def friends_list():
+     friends_list = [
+        {'id': 1, 'name': 'John Doe', 'status': 'Online'},
+        {'id': 2, 'name': 'Jane Smith', 'status': 'Offline'},
+        {'id': 3, 'name': 'Peter Jones', 'status': 'Online'},
+        # Add more friends...
+    ]
+     return render_template('friends.html.jinja', friends=friends_list)
+@app.route("/healthdata")
+def health_data():
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" INSERT INTO `Health Data`(`ID`, `UserID`, `Weight`,`Age`, `Sex`, `Daily 
+       Excersize`, `Local Weather`, `Health Considerations`) VALUES(
+                   %s, %s, %s, %s, %s, %s, %s,%s)
+             """,(current_user.id, current_user.weight, current_user.age, current_user.sex, current_user.daily.excersize, current_user.local.weather, current_user.health.considerations))
     
-    return render_template("friends.html.jinja")
+    connection.close()
+
+
+    return render_template("healthdata.html.jinja")
+
+
 
 
 
