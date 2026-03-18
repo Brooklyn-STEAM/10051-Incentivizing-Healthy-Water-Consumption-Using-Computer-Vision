@@ -133,7 +133,6 @@ def wheelofdrinks():
     connection = connect_db()
     cursor = connection.cursor()
 
-    # get total points from water consumption
     cursor.execute("""
         SELECT SUM(Points) AS total_points
         FROM `Water Consumption`
@@ -141,12 +140,17 @@ def wheelofdrinks():
     """, (current_user.id,))
 
     result = cursor.fetchone()
-
     points = result["total_points"] if result["total_points"] else 0
+
+    cursor.execute("SELECT * FROM Rewards")
+    rewards = cursor.fetchall()
+
+    connection.close()
 
     return render_template(
         "wheelofdrinks.html.jinja",
-        coins=points
+        points=points,
+        rewards=rewards
     )
 
 #for the gacha spin page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -154,35 +158,40 @@ def wheelofdrinks():
 @login_required
 def gacha_spin():
 
-    import random
-
-    data = request.json
-    plays = int(data["plays"])
+    data = request.get_json()
+    plays = data.get("plays")
 
     connection = connect_db()
     cursor = connection.cursor()
 
-    # get random rewards from Rewards table
+    # GET POINTS
     cursor.execute("""
-        SELECT ID, Name, Image
-        FROM Rewards
-        ORDER BY RAND()
-        LIMIT %s
-    """, (plays,))
+        SELECT SUM(Points) AS total_points
+        FROM `Water Consumption`
+        WHERE UserID = %s
+    """, (current_user.id,))
 
-    rewards = cursor.fetchall()
+    result = cursor.fetchone()
+    points = result["total_points"] if result["total_points"] else 0
 
-    # save rewards to UserRewards
-    for reward in rewards:
+    cost = 10 if plays == 1 else 100
 
-        cursor.execute("""
-        INSERT INTO UserRewards (UserID, RewardsID)
+    if points < cost:
+        return jsonify({"success": False, "message": "Not enough points"})
+
+    # GET RANDOM REWARD
+    cursor.execute("SELECT * FROM Rewards ORDER BY RAND() LIMIT 1")
+    reward = cursor.fetchone()
+
+    # SAVE TO USER REWARDS
+    cursor.execute("""
+        INSERT INTO user_rewards (UserID, RewardID)
         VALUES (%s, %s)
-        """, (current_user.id, reward["ID"]))
+    """, (current_user.id, reward["RewardID"]))
 
-    session["rewards"] = rewards
+    connection.commit()
 
-    return {"success": True}
+    return jsonify({"success": True})
 
 #for the results page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/results")
@@ -195,8 +204,6 @@ def results():
         "results.html.jinja",
         rewards=rewards
     )
-
-
 #for the account page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/Accountpage")
 def account_page():
@@ -275,3 +282,68 @@ def tracker():
 @app.route("/camera")
 def camera():
     return render_template("camera.html.jinja")
+
+#for the health data page where users can input their health data and it will be saved to the database.----------------------------------------------------------------------------------------------------------------------
+@app.route("/healthdata", methods=["GET", "POST"])
+@login_required
+def healthdata():
+
+    if request.method == "POST":
+
+        age = request.form.get("age")
+        weight = request.form.get("weight")
+        sex = request.form.get("sex")
+        exercise = request.form.get("exercise")
+        climate = request.form.get("climate")
+
+        health = request.form.getlist("health")
+        health_string = ", ".join(health)
+
+        connection = connect_db()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        INSERT INTO `Health Data`
+        (UserID, Weight, Sex, `Daily Exercise`, `Local Weather`, `Health Considerations`)
+        VALUES (%s,%s,%s,%s,%s,%s)
+        """, (
+            current_user.id,
+            weight,
+            sex,
+            exercise,
+            climate,
+            health_string
+        ))
+
+        connection.close()
+
+        flash("Health data saved!")
+        return redirect("/Accountpage")
+
+    return render_template("healthdata.html.jinja")
+
+
+ 
+#for the catalog page where users can see the rewards they have earned and how many points they have.------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/catalog")
+@login_required
+def catalog():
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT 
+            Rewards.ID,
+            Rewards.Name,
+            Rewards.Points,
+            UserRewards.Quantity
+        FROM UserRewards
+        JOIN Rewards 
+            ON Rewards.ID = UserRewards.RewardID
+        WHERE UserRewards.UserID = %s
+    """, (current_user.id,))
+
+    rewards = cursor.fetchall()
+    connection.close()
+
+    return render_template("catalog.html.jinja", rewards=rewards)
