@@ -6,6 +6,8 @@ import pymysql # Import the PyMySQL library for MySQL database connection
 
 from dynaconf import Dynaconf # Import the Dynaconf library for configuration management
 
+from ai_model import predict_volume  # import the AI function
+
 
 config = Dynaconf(settings_files=['settings.toml'])
 
@@ -24,8 +26,8 @@ class User(UserMixin):
 
 config = Dynaconf(settings_file = ["settings.toml"]) # Load the configuration from the settings.toml file
 
-
-@login_manager.user_loader
+# Define a user loader function for Flask-Login to load a user from the database based on the user ID stored in the session. This function connects to the database, retrieves the user data, and returns a User object if found, or None if not found.
+@login_manager.user_loader 
 def load_user(user_id):
 
     connection = connect_db()
@@ -172,5 +174,42 @@ def health_data():
 
 
 
+@app.route("/Accountpage")
+def account_page():
+
+    return render_template("Accountpage.html.jinja")
+
+@app.route('/friends')
+def friend_list():
+    
+    return render_template("friends.html.jinja")
 
 
+#for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    predicted_volume = predict_volume(file)
+    return jsonify({"predicted_volume": predicted_volume})
+
+#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/tracker")  
+def tracker():
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    tracker_data = {
+        "Monday": 2,
+        "Tuesday": 5,
+        "Wednesday": 2,
+        "Thursday": 0,
+        "Friday": 0,
+        "Saturday": 0,
+        "Sunday": 0take
+    }
+    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
+#for the camera (incomplete) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/camera")
+def camera():
+    return render_template("camera.html.jinja")
