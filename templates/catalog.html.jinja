@@ -1,0 +1,15 @@
+<h1>My Drinks 💧</h1>
+
+{% if Rewards %}
+  {% for Rewards in Rewards %}
+    <div style="border:1px solid black; padding:10px; margin:10px;">
+      
+      <h2>{{ Rewards.Name }}</h2>
+      <p>Points Value: {{ Rewards.Points }}</p>
+      <p>Quantity Owned: {{ Rewards.Quantity }}</p>
+
+    </div>
+  {% endfor %}
+{% else %}
+  <p>You don’t have any drinks yet 😭</p>
+{% endif %}

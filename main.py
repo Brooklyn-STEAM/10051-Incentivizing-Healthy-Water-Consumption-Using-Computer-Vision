@@ -142,11 +142,15 @@ def wheelofdrinks():
     result = cursor.fetchone()
     points = result["total_points"] if result["total_points"] else 0
 
+    cursor.execute("SELECT * FROM Rewards")
+    rewards = cursor.fetchall()
+
     connection.close()
 
     return render_template(
         "wheelofdrinks.html.jinja",
-        coins=points
+        points=points,
+        rewards=rewards
     )
 
 #for the gacha spin page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -154,15 +158,13 @@ def wheelofdrinks():
 @login_required
 def gacha_spin():
 
-    data = request.json
-    plays = int(data["plays"])
-
-    cost = plays * 10
+    data = request.get_json()
+    plays = data.get("plays")
 
     connection = connect_db()
     cursor = connection.cursor()
 
-    # get user's points
+    # GET POINTS
     cursor.execute("""
         SELECT SUM(Points) AS total_points
         FROM `Water Consumption`
@@ -172,38 +174,22 @@ def gacha_spin():
     result = cursor.fetchone()
     points = result["total_points"] if result["total_points"] else 0
 
+    cost = 10 if plays == 1 else 100
 
-    # THIS IS THE IF STATEMENT THAT CHECKS IF THE USER HAS ENOUGH POINTS TO PLAY THE GACHA SPIN. IF THE USER DOES NOT HAVE ENOUGH POINTS, IT CLOSES THE DATABASE CONNECTION AND RETURNS A JSON RESPONSE INDICATING FAILURE AND A MESSAGE STATING "Not enough points".
     if points < cost:
-        connection.close()
-        return jsonify({
-            "success": False,
-            "message": "Not enough points"
-        })
+        return jsonify({"success": False, "message": "Not enough points"})
 
+    # GET RANDOM REWARD
+    cursor.execute("SELECT * FROM Rewards ORDER BY RAND() LIMIT 1")
+    reward = cursor.fetchone()
 
-    # get rewards from Rewards table 
+    # SAVE TO USER REWARDS
     cursor.execute("""
-        SELECT ID, Name, Image
-        FROM Rewards
-        ORDER BY RAND()
-        LIMIT %s
-    """, (plays,))
-
-    rewards = cursor.fetchall()
-
-    # save rewards to UserRewards
-    for reward in rewards:
-
-        cursor.execute("""
-        INSERT INTO UserRewards (UserID, RewardsID)
+        INSERT INTO user_rewards (UserID, RewardID)
         VALUES (%s, %s)
-        """, (current_user.id, reward["ID"]))
+    """, (current_user.id, reward["RewardID"]))
 
-
-    session["rewards"] = rewards
-
-    connection.close()
+    connection.commit()
 
     return jsonify({"success": True})
 
@@ -306,3 +292,27 @@ def healthdata():
     return render_template("healthdata.html.jinja")
 
 
+ 
+#for the catalog page where users can see the rewards they have earned and how many points they have.------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/catalog")
+@login_required
+def catalog():
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT 
+            Rewards.ID,
+            Rewards.Name,
+            Rewards.Points,
+            UserRewards.Quantity
+        FROM UserRewards
+        JOIN Rewards 
+            ON Rewards.ID = UserRewards.RewardID
+        WHERE UserRewards.UserID = %s
+    """, (current_user.id,))
+
+    rewards = cursor.fetchall()
+    connection.close()
+
+    return render_template("catalog.html.jinja", rewards=rewards)
