@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ reward.Name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-blue-100 min-h-screen p-10">
+
+    <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow">
+        <img src="{{ reward.Image }}" class="w-full h-64 object-cover rounded mb-4">
+
+        <h1 class="text-3xl font-bold mb-2">{{ reward.Name }}</h1>
+
+        <p class="text-lg"><strong>Rarity:</strong> {{ rarity }}</p>
+        <p class="text-lg"><strong>Price:</strong> {{ reward.Price }}</p>
+
+        <h2 class="text-xl font-bold mt-4">Recipe</h2>
+        <p class="mt-2 whitespace-pre-line">{{ reward.Recipe }}</p>
+
+        <a href="/catalog" class="mt-6 inline-block bg-blue-400 text-white px-4 py-2 rounded">
+            Back to Catalog
+        </a>
+    </div>
+
+</body>
+</html>

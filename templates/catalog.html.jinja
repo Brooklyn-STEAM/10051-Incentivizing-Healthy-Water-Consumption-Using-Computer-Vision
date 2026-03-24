@@ -1,15 +1,16 @@
 <h1>My Drinks 💧</h1>
 
-{% if Rewards %}
-  {% for Rewards in Rewards %}
-    <div style="border:1px solid black; padding:10px; margin:10px;">
-      
-      <h2>{{ Rewards.Name }}</h2>
-      <p>Points Value: {{ Rewards.Points }}</p>
-      <p>Quantity Owned: {{ Rewards.Quantity }}</p>
-
-    </div>
+<div class="grid md:grid-cols-3 gap-6">
+  {% for r in rewards %}
+  <a href="{{ url_for('reward_detail', reward_id=r.ID) }}"
+     class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
+    <img src="{{ r.Image }}" class="w-full h-32 object-cover rounded">
+    <h3 class="mt-2 font-bold text-lg">{{ r.Name }}</h3>
+    <p class="text-sm mt-1">Price: {{ r.Price }}</p>
+    <p class="text-xs text-gray-500 mt-1">Weight: {{ r.Weight }}</p>
+    <p class="text-xs text-gray-400 mt-1">
+      Obtained: {{ r.Timestamp }}
+    </p>
+  </a>
   {% endfor %}
-{% else %}
-  <p>You don’t have any drinks yet 😭</p>
-{% endif %}
+</div>
