@@ -74,8 +74,9 @@ def login():
         cursor = connection.cursor()
 
         cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
+        
         result = cursor.fetchone()
-
+        
         connection.close()
 
         if result is None:
@@ -85,13 +86,13 @@ def login():
         else:
             login_user(User(result))
             return redirect('/Accountpage')
-
+        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
     return render_template("login.html.jinja")
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
-    if request.method == "POST":
+   if  request.method == "POST":
         name = request.form["name"]
         username = request.form["username"]
         email = request.form["email"]
@@ -124,7 +125,7 @@ def register():
                         flash("Account created successfully!")
                         return redirect("/login")
 
-    return render_template("register.html.jinja")
+        return render_template("register.html.jinja")
 #for the wheel of drinks page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/wheelofdrinks")
 @login_required
@@ -205,14 +206,75 @@ def account_page():
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
+@login_required
 def friends_list():
-     friends_list = [
-        {'id': 1, 'name': 'John Doe', 'status': 'Online'},
-        {'id': 2, 'name': 'Jane Smith', 'status': 'Offline'},
-        {'id': 3, 'name': 'Peter Jones', 'status': 'Online'},
-        # Add more friends...
-    ]
-     return render_template('friends.html.jinja', friends=friends_list)
+     connection = connect_db()
+     cursor = connection.cursor()
+     cursor.execute("""
+            SELECT User.ID, User.username, User.is_online
+            FROM friendships
+            JOIN User 
+            ON User.ID = friendships.user_id2
+           WHERE friendships.user_id1 = %s;
+    """,     (current_user.id,))
+     results = cursor.fetchall()
+     connection.close()
+
+
+     return render_template('friends.html.jinja', friends=results)
+
+@app.route('/addfriends' , methods=['GET', 'POST'])
+@login_required
+def add_friends():
+    
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" SELECT * FROM `User` """)
+     
+
+    if  request.method == "POST":
+      user_id2= request.form["user_id2"]
+     
+     
+      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
+      return redirect('/success')
+
+    results = cursor.fetchall()
+    connection.close()
+    
+
+
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
+
+
+
+
+
+
 @app.route("/healthdata")
 def health_data():
     connection = connect_db()
@@ -223,22 +285,14 @@ def health_data():
              """,(current_user.id, current_user.weight, current_user.age, current_user.sex, current_user.daily.excersize, current_user.local.weather, current_user.health.considerations))
     
     connection.close()
-
+    
+    
+    return redirect('/success') # Redirect after POST
 
     return render_template("healthdata.html.jinja")
 
 
 
-
-@app.route("/Accountpage")
-def account_page():
-
-    return render_template("Accountpage.html.jinja")
-
-@app.route('/friends')
-def friend_list():
-    
-    return render_template("friends.html.jinja")
 
 
 #for the logout page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -246,6 +300,9 @@ def friend_list():
 @login_required
 def logout():
     logout_user()
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
     return redirect("/")
 #for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/predict", methods=["POST"])
