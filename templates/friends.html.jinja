@@ -27,7 +27,7 @@
 
 
 <body class="bg-gray-100 p-4">
-    <div class=" mx-auto bg-white shadow-lg rounded-lg p-4 h-200 w-180">
+    <div class=" mx-auto bg-white shadow-lg rounded-lg p-4 h-230 w-180">
         <h1 class="text-2xl font-semibold mb-4">My Friends</h1>
 
         <!-- Search Bar -->
@@ -37,18 +37,29 @@
         </div>
 
         <!-- Friends List -->
-        <ul id="friendsList" class="divide-y divide-gray-200">
-            {% for friend in friends %}
-                <li class="p-3 hover:bg-gray-50 flex justify-between items-center" data-name="{{ friend.name.lower() }}">
-                    <span>{{ friend.name }}</span>
-                    {% if friend.status == 'Online' %}
-                        <span class="px-2 py-0.5 text-xs font-medium text-green-800 bg-green-200 rounded-full">Online</span>
-                    {% else %}
-                        <span class="px-2 py-0.5 text-xs font-medium text-red-800 bg-red-200 rounded-full">Offline</span>
-                    {% endif %}
+    <ul>
+       {% for friend in friends %}
+            
+                <li class="p-3 hover:bg-gray-50 flex justify-between items-center" >
+                   {{ friend.username }}
+                     
+                     <form action="/remove_friend/{{ friend.ID }}" method="POST" style="display:inline;">
+            <button type="submit">Remove</button>
+        </form>
+
+                {{ friend[1] }} 
+               {% if friend[2] %}
+                   <span style="color:green;">● Online</span>
+                {% else %}
+                    <span style="color:red;">● Offline</span>
+               {% endif %}
+
                 </li>
-            {% endfor %}
-        </ul>
+            
+        {% endfor %}
+      
+    </ul>
+      
     </div>
 
 </div>
@@ -71,7 +82,6 @@
 
 
 
-</div>
 
 
 

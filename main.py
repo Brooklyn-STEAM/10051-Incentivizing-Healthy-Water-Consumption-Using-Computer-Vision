@@ -96,9 +96,9 @@ def login():
         connection = connect_db()
         cursor = connection.cursor()
 
-        # Fetch user by username
-        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
+        cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
         result = cursor.fetchone()
+
         connection.close()
 
         if result is None:
@@ -107,16 +107,9 @@ def login():
 
         if password != result["Password"]:
             flash("Incorrect password!")
-            return render_template("login.html.jinja")
-
-        # Mark user online
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("UPDATE `User` SET is_online = 1 WHERE ID = %s", (result["ID"],))
-        connection.close()
-
-        login_user(User(result))
-        return redirect("/Accountpage")
+        else:
+            login_user(User(result))
+            return redirect('/Accountpage')
 
     return render_template("login.html.jinja")
 
@@ -124,7 +117,7 @@ def login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
-    if request.method == "POST":
+   if  request.method == "POST":
         name = request.form["name"]
         username = request.form["username"]
         email = request.form["email"]
@@ -153,12 +146,13 @@ def register():
                         flash("Email already registered!")
                         connection.close()
                         return render_template("register.html.jinja")
-            return redirect("/healthdata")
-        
-    return render_template("register.html.jinja")
+            else:
+                        flash("Account created successfully!")
+                        return redirect("/login")
 
-#for the health data page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/healthdata", methods=["GET", "POST"])
+    return render_template("register.html.jinja")
+#for the wheel of drinks page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/wheelofdrinks")
 @login_required
 def health_data():
     if request.method == "POST":
