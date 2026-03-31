@@ -50,38 +50,54 @@
       </div>
   </div>
 
-  <!-- REWARD CATALOG -->
+  <!-- REWARD CATALOG header only (loop removed; items now shown inside "Your Rewards") -->
   <main class="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-2 gap-10 rounded-lg shadow mt-10 w-full bg-blue-200">
       <h2 class="text-xl font-bold mb-4 text-center justify-center">All Rewards</h2>
 
       <div class="flex justify-center gap-5 flex-wrap col-span-full bg-blue-200">
-          {% for reward in rewards %}
-          <a href="/reward/{{ reward.ID }}" class="bg-white rounded-lg shadow p-4 w-48 mx-2 hover:scale-105 transition">
-              <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded" alt="{{ reward.Name }}">
-              <p class="text-center mt-2 text-sm font-bold">{{ reward.Name }}</p>
-          </a>
-          {% endfor %}
+          <!-- Catalog loop intentionally removed -->
       </div>
   </main>
 
-  <!-- Server-rendered user rewards + container for immediate spin results -->
+  <!-- Server-rendered user rewards + catalog items appended here so each item is clickable to view details -->
   <div class="max-w-6xl mx-auto px-6 py-6 w-full">
     <h3 class="text-lg font-bold mb-3">Your Rewards</h3>
 
     <div id="user-rewards-container" class="flex gap-4 flex-wrap">
+      <!-- existing user_rewards (server-rendered) — each card is a link to the reward detail page -->
       {% for ur in user_rewards %}
-        <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center" data-ur-id="{{ ur.ur_id }}">
-          {% if ur.Image %}
-            {% if ur.Image.startswith('/static/') %}
-              <img src="{{ ur.Image }}" alt="{{ ur.Name }}" class="w-full h-24 object-cover rounded reward-image">
+        {% set rid = ur.ID if ur.ID is defined else ur.ur_id if ur.ur_id is defined else ur.get('ID') if ur.get('ID') else ur.get('ur_id') %}
+        <a href="{{ url_for('reward_detail', reward_id=rid) }}" class="reward-card-link block">
+          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center" data-ur-id="{{ ur.ur_id }}">
+            {% if ur.Image %}
+              {% if ur.Image.startswith('/static/') %}
+                <img src="{{ ur.Image }}" alt="{{ ur.Name }}" class="w-full h-24 object-cover rounded reward-image">
+              {% else %}
+                <img src="{{ url_for('static', filename=ur.Image) }}" alt="{{ ur.Name }}" class="w-full h-24 object-cover rounded reward-image">
+              {% endif %}
             {% else %}
-              <img src="{{ url_for('static', filename=ur.Image) }}" alt="{{ ur.Name }}" class="w-full h-24 object-cover rounded reward-image">
+              <img src="{{ url_for('static', filename='placeholder.png') }}" alt="No image" class="w-full h-24 object-cover rounded reward-image">
             {% endif %}
-          {% else %}
-            <img src="{{ url_for('static', filename='placeholder.png') }}" alt="No image" class="w-full h-24 object-cover rounded reward-image">
-          {% endif %}
-          <div class="reward-name mt-2 font-bold text-sm">{{ ur.Name }}</div>
-        </div>
+            <div class="reward-name mt-2 font-bold text-sm">{{ ur.Name }}</div>
+          </div>
+        </a>
+      {% endfor %}
+
+      <!-- ADD-ON: catalog loop moved here so catalog items appear inside the "Your Rewards" area and are clickable -->
+      {% for reward in rewards %}
+        {% set rid = reward.ID if reward.ID is defined else reward.get('ID') %}
+        <a href="{{ url_for('reward_detail', reward_id=rid) }}" class="bg-white rounded-lg shadow p-4 w-48 mx-2 hover:scale-105 transition text-center block">
+            {% if reward.Image %}
+              {% if reward.Image.startswith('/static/') %}
+                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded" alt="{{ reward.Name }}">
+              {% else %}
+                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded" alt="{{ reward.Name }}">
+              {% endif %}
+            {% else %}
+              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded" alt="{{ reward.Name }}">
+            {% endif %}
+            <p class="text-center mt-2 text-sm font-bold">{{ reward.Name }}</p>
+        </a>
       {% endfor %}
     </div>
 
@@ -94,6 +110,7 @@
     .reward-card { width:140px; text-align:center; }
     .reward-image { width:100%; height:auto; border-radius:8px; display:block; }
     .reward-name { margin-top:6px; font-size:14px; }
+    .reward-card-link { text-decoration: none; color: inherit; }
   </style>
 
   <script>
@@ -128,8 +145,16 @@
       name.className = "font-bold text-sm";
       name.textContent = r.Name || 'Unknown';
 
+      // link to detail page
+      const link = document.createElement("a");
+      const id = r.ID || r.ur_id || r.id;
+      link.href = "/reward/" + id;
+      link.textContent = "View details";
+      link.className = "text-xs text-blue-600 hover:underline mt-1";
+
       item.appendChild(img);
       item.appendChild(name);
+      item.appendChild(link);
       list.appendChild(item);
     });
 
@@ -168,11 +193,17 @@
       openModalWithRewards(data.rewards || []);
       updatePointsDisplay(data.remaining_points);
 
-      // Optionally also append the new rewards to the user-rewards container
+      // Also append the new rewards to the user-rewards container
       // so they appear in the "Your Rewards" list without a page reload:
       const userContainer = document.getElementById('user-rewards-container');
       if (userContainer && data.rewards && data.rewards.length) {
         data.rewards.forEach(r => {
+          // create anchor wrapper linking to detail page
+          const id = r.ID || r.ur_id || r.id;
+          const anchor = document.createElement('a');
+          anchor.href = '/reward/' + id;
+          anchor.className = 'block';
+
           const card = document.createElement('div');
           card.className = 'reward-card bg-white rounded-lg shadow p-3 w-40 text-center';
           const imgSrc = imageUrl(r.Image);
@@ -180,8 +211,10 @@
             <img src="${imgSrc}" alt="${r.Name || ''}" class="w-full h-24 object-cover rounded reward-image">
             <div class="reward-name mt-2 font-bold text-sm">${r.Name || ''}</div>
           `;
+          anchor.appendChild(card);
+
           // prepend newest reward
-          userContainer.insertBefore(card, userContainer.firstChild);
+          userContainer.insertBefore(anchor, userContainer.firstChild);
         });
       }
 
