@@ -103,7 +103,7 @@ def login():
             user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
             login_user(user)
             return redirect(url_for("wheelofdrinks"))
-
+        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
     return render_template("login.html.jinja")
 
 # Register route
@@ -335,14 +335,69 @@ def account_page():
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
+@login_required
 def friends_list():
-     friends_list = [
-        {'id': 1, 'name': 'John Doe', 'status': 'Online'},
-        {'id': 2, 'name': 'Jane Smith', 'status': 'Offline'},
-        {'id': 3, 'name': 'Peter Jones', 'status': 'Online'},
-        # Add more friends...
-    ]
-     return render_template('friends.html.jinja', friends=friends_list)
+     connection = connect_db()
+     cursor = connection.cursor()
+     cursor.execute("""
+            SELECT User.ID, User.username, User.is_online
+            FROM friendships
+            JOIN User 
+            ON User.ID = friendships.user_id2
+           WHERE friendships.user_id1 = %s;
+    """,     (current_user.id,))
+     results = cursor.fetchall()
+     connection.close()
+
+
+     return render_template('friends.html.jinja', friends=results)
+
+@app.route('/addfriends' , methods=['GET', 'POST'])
+@login_required
+def add_friends():
+    
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" SELECT * FROM `User` """)
+     
+
+    if  request.method == "POST":
+      user_id2= request.form["user_id2"]
+     
+     
+      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
+      return redirect('/success')
+
+    results = cursor.fetchall()
+    connection.close()
+    
+
+
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
 
 
 
@@ -355,6 +410,9 @@ def friends_list():
 @login_required
 def logout():
     logout_user()
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
     return redirect("/")
 #for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/predict", methods=["POST"])
