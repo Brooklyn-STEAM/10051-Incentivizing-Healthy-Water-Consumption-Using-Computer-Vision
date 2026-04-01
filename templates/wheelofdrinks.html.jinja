@@ -9,19 +9,17 @@
 <body class="bg-white min-h-screen flex flex-col items-center">
   {% include "components/navbar.html.jinja" %}
  
+  <!-- TOP SECTION -->
   <section class="max-w-4xl w-full px-6 py-10 bg-blue-200 rounded-lg shadow mt-10 text-center">
       <h1 class="text-3xl font-bold mt-4">Daily Drip</h1>
 
-      <!-- Updated points element so JS can update it -->
       <p class="mt-2 text-lg points-display">Points: {{ points }}</p>
 
-      <!-- MACHINE -->
       <div class="mt-6 relative">
           <img src="{{ url_for('static', filename='machine.png') }}" 
                class="w-80 mx-auto animate-pulse">
       </div>
 
-      <!-- BUTTONS -->
       <div class="flex gap-4 mt-6 text-center justify-center">
           <button onclick="spin(1)"
               class="bg-yellow-200 px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105">
@@ -40,7 +38,6 @@
       <div class="bg-blue-200 p-6 rounded-xl text-center max-w-md w-full">
           <h2 class="text-xl font-bold mb-4">You Won!</h2>
 
-          <!-- MULTIPLE REWARDS (populated by JS) -->
           <div id="rewardList" class="grid grid-cols-2 gap-4"></div>
 
           <button onclick="closeModal()"
@@ -50,159 +47,282 @@
       </div>
   </div>
 
-  <!-- REWARD CATALOG -->
-  <main class="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-2 gap-10 rounded-lg shadow mt-10 w-full bg-blue-200">
-      <h2 class="text-xl font-bold mb-4 text-center justify-center">All Rewards</h2>
+  <!-- MAIN CONTENT -->
+  <div class="max-w-6xl mx-auto px-6 py-10 w-full">
 
-      <div class="flex justify-center gap-5 flex-wrap col-span-full bg-blue-200">
-          {% for reward in rewards %}
-          <a href="/reward/{{ reward.ID }}" class="bg-white rounded-lg shadow p-4 w-48 mx-2 hover:scale-105 transition">
-              <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded" alt="{{ reward.Name }}">
-              <p class="text-center mt-2 text-sm font-bold">{{ reward.Name }}</p>
-          </a>
-          {% endfor %}
-      </div>
-  </main>
+    <!-- USER REWARDS -->
+    <h3 class="text-2xl font-bold mb-4">Your Rewards</h3>
 
-  <!-- Server-rendered user rewards + container for immediate spin results -->
-  <div class="max-w-6xl mx-auto px-6 py-6 w-full">
-    <h3 class="text-lg font-bold mb-3">Your Rewards</h3>
+    <!-- PAGINATION CONTROLS -->
+    <div class="flex justify-between items-center mb-3">
+      <button id="prevPage" class="px-3 py-1 bg-gray-300 rounded disabled:opacity-40">Prev</button>
+      <span id="pageIndicator" class="font-bold"></span>
+      <button id="nextPage" class="px-3 py-1 bg-gray-300 rounded disabled:opacity-40">Next</button>
+    </div>
 
-    <div id="user-rewards-container" class="flex gap-4 flex-wrap">
+    <div id="user-rewards-container" class="flex gap-4 flex-wrap transition-all duration-300">
       {% for ur in user_rewards %}
-        <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center" data-ur-id="{{ ur.ur_id }}">
-          {% if ur.Image %}
-            {% if ur.Image.startswith('/static/') %}
-              <img src="{{ ur.Image }}" alt="{{ ur.Name }}" class="w-full h-24 object-cover rounded reward-image">
+        <a href="{{ url_for('reward_detail', reward_id=ur.reward_id) }}" class="block user-reward-card">
+          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center">
+
+            {% if ur.Image %}
+              {% if ur.Image.startswith('/static/') %}
+                <img src="{{ ur.Image }}" class="w-full h-24 object-cover rounded">
+              {% else %}
+                <img src="{{ url_for('static', filename=ur.Image) }}" class="w-full h-24 object-cover rounded">
+              {% endif %}
             {% else %}
-              <img src="{{ url_for('static', filename=ur.Image) }}" alt="{{ ur.Name }}" class="w-full h-24 object-cover rounded reward-image">
+              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
             {% endif %}
-          {% else %}
-            <img src="{{ url_for('static', filename='placeholder.png') }}" alt="No image" class="w-full h-24 object-cover rounded reward-image">
-          {% endif %}
-          <div class="reward-name mt-2 font-bold text-sm">{{ ur.Name }}</div>
-        </div>
+
+            <div class="mt-2 font-bold text-sm">{{ ur.Name }}</div>
+          </div>
+        </a>
       {% endfor %}
     </div>
 
-    <!-- Container for immediate spin results (cleared and filled by JS) -->
+    <!-- ALL REWARDS (GROUPED BY RARITY) -->
+    <h3 class="text-2xl font-bold mt-10 mb-4">All Rewards</h3>
+
+    {% set legendary = rewards | selectattr("Weight", "equalto", 1) | list %}
+    {% set epic      = rewards | selectattr("Weight", "in", [2,3]) | list %}
+    {% set rare      = rewards | selectattr("Weight", "in", [4,5,6,7]) | list %}
+    {% set common    = rewards | selectattr("Weight", "ge", 8) | list %}
+
+   
+    {% if legendary %}
+      <h4 class="text-xl font-bold text-yellow-600 mb-2">Legendary</h4>
+      <div class="flex gap-4 flex-wrap mb-6">
+        {% for reward in legendary %}
+          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
+
+            {% if reward.Image %}
+              {% if reward.Image.startswith('/static/') %}
+                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
+              {% else %}
+                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
+              {% endif %}
+            {% else %}
+              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
+            {% endif %}
+
+            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    
+    {% if epic %}
+      <h4 class="text-xl font-bold text-purple-600 mb-2">Epic</h4>
+      <div class="flex gap-4 flex-wrap mb-6">
+        {% for reward in epic %}
+          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
+
+            {% if reward.Image %}
+              {% if reward.Image.startswith('/static/') %}
+                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
+              {% else %}
+                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
+              {% endif %}
+            {% else %}
+              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
+            {% endif %}
+
+            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    
+    {% if rare %}
+      <h4 class="text-xl font-bold text-blue-600 mb-2">Rare</h4>
+      <div class="flex gap-4 flex-wrap mb-6">
+        {% for reward in rare %}
+          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
+
+            {% if reward.Image %}
+              {% if reward.Image.startswith('/static/') %}
+                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
+              {% else %}
+                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
+              {% endif %}
+            {% else %}
+              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
+            {% endif %}
+
+            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    
+    {% if common %}
+      <h4 class="text-xl font-bold text-gray-600 mb-2">Common</h4>
+      <div class="flex gap-4 flex-wrap mb-6">
+        {% for reward in common %}
+          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
+
+            {% if reward.Image %}
+              {% if reward.Image.startswith('/static/') %}
+                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
+              {% else %}
+                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
+              {% endif %}
+            {% else %}
+              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
+            {% endif %}
+
+            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- SPIN RESULTS -->
     <div id="spin-results" class="spin-results mt-6 flex gap-4 flex-wrap"></div>
+
   </div>
 
   <style>
     .spin-results { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; }
     .reward-card { width:140px; text-align:center; }
-    .reward-image { width:100%; height:auto; border-radius:8px; display:block; }
-    .reward-name { margin-top:6px; font-size:14px; }
   </style>
 
+  <!-- page thing which idk what its called and all the logic for the wheel which has killed me  -->
   <script>
-  // Convert DB image path to usable URL
-  function imageUrl(path) {
-    if (!path) return '/static/placeholder.png';
-    if (path.startsWith('/static/') || path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
+    function imageUrl(path) {
+      if (!path) return '/static/placeholder.png';
+      if (path.startsWith('/static/') || path.startsWith('http')) return path;
+      return '/static/' + path.replace(/^\/+/, '');
     }
-    // treat as static filename
-    return '/static/' + path.replace(/^\/+/, '');
-  }
 
-  // Populate modal with returned rewards and open it
-  function openModalWithRewards(rewards) {
-    const list = document.getElementById("rewardList");
-    list.innerHTML = "";
-    if (!rewards || rewards.length === 0) {
-      list.textContent = "No rewards";
-      return;
-    }
-    rewards.forEach(r => {
-      const item = document.createElement("div");
-      item.className = "flex flex-col items-center";
+    function openModalWithRewards(rewards) {
+      const list = document.getElementById("rewardList");
+      list.innerHTML = "";
 
-      const img = document.createElement("img");
-      img.src = imageUrl(r.Image);
-      img.className = "w-20 h-20 object-cover rounded mb-2";
-      img.alt = r.Name || '';
+      rewards.forEach(r => {
+        const item = document.createElement("div");
+        item.className = "flex flex-col items-center";
 
-      const name = document.createElement("p");
-      name.className = "font-bold text-sm";
-      name.textContent = r.Name || 'Unknown';
+        const img = document.createElement("img");
+        img.src = imageUrl(r.Image);
+        img.className = "w-20 h-20 object-cover rounded mb-2";
 
-      item.appendChild(img);
-      item.appendChild(name);
-      list.appendChild(item);
-    });
+        const name = document.createElement("p");
+        name.className = "font-bold text-sm";
+        name.textContent = r.Name;
 
-    document.getElementById("resultModal").classList.remove("hidden");
-  }
+        const link = document.createElement("a");
+        link.href = "/reward/" + r.ID;
+        link.textContent = "View details";
+        link.className = "text-xs text-blue-600 hover:underline mt-1";
 
-  // Update points display element
-  function updatePointsDisplay(remaining) {
-    const el = document.querySelector('.points-display');
-    if (el) el.textContent = 'Points: ' + remaining;
-  }
-
-  // Main spin function called by buttons
-  async function spin(amount) {
-    try {
-      // disable buttons while request is in-flight
-      const btns = document.querySelectorAll('button[onclick^="spin("]');
-      btns.forEach(b => b.disabled = true);
-
-      const resp = await fetch("/gacha_spin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ plays: amount })
+        item.appendChild(img);
+        item.appendChild(name);
+        item.appendChild(link);
+        list.appendChild(item);
       });
 
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error('Server error: ' + resp.status + ' ' + text);
-      }
-
-      const data = await resp.json();
-      if (!data.success) throw new Error(data.message || 'Spin failed');
-
-      // show returned images immediately in modal
-      openModalWithRewards(data.rewards || []);
-      updatePointsDisplay(data.remaining_points);
-
-      // Optionally also append the new rewards to the user-rewards container
-      // so they appear in the "Your Rewards" list without a page reload:
-      const userContainer = document.getElementById('user-rewards-container');
-      if (userContainer && data.rewards && data.rewards.length) {
-        data.rewards.forEach(r => {
-          const card = document.createElement('div');
-          card.className = 'reward-card bg-white rounded-lg shadow p-3 w-40 text-center';
-          const imgSrc = imageUrl(r.Image);
-          card.innerHTML = `
-            <img src="${imgSrc}" alt="${r.Name || ''}" class="w-full h-24 object-cover rounded reward-image">
-            <div class="reward-name mt-2 font-bold text-sm">${r.Name || ''}</div>
-          `;
-          // prepend newest reward
-          userContainer.insertBefore(card, userContainer.firstChild);
-        });
-      }
-
-    } catch (err) {
-      console.error('Gacha spin error', err);
-      alert('Spin failed: ' + (err.message || 'Unknown error'));
-    } finally {
-      const btns = document.querySelectorAll('button[onclick^="spin("]');
-      btns.forEach(b => b.disabled = false);
+      document.getElementById("resultModal").classList.remove("hidden");
     }
-  }
 
-  function closeModal() {
-    document.getElementById("resultModal").classList.add("hidden");
-  }
+    function updatePointsDisplay(remaining) {
+      const el = document.querySelector('.points-display');
+      if (el) el.textContent = 'Points: ' + remaining;
+    }
 
-  // wire close button (keeps existing onclick but ensures event binding)
-  document.addEventListener('DOMContentLoaded', function () {
-    const closeBtn = document.querySelector('#resultModal button');
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  });
+    async function spin(amount) {
+      try {
+        const btns = document.querySelectorAll('button[onclick^="spin("]');
+        btns.forEach(b => b.disabled = true);
+
+        const resp = await fetch("/gacha_spin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ plays: amount })
+        });
+
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message);
+
+        openModalWithRewards(data.rewards);
+        updatePointsDisplay(data.remaining_points);
+
+        // Add new rewards to page 1
+        data.rewards.forEach(r => {
+          const a = document.createElement('a');
+          a.href = "/reward/" + r.ID;
+          a.className = "block user-reward-card";
+
+          a.innerHTML = `
+            <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center">
+              <img src="${imageUrl(r.Image)}" class="w-full h-24 object-cover rounded">
+              <div class="mt-2 font-bold text-sm">${r.Name}</div>
+            </div>
+          `;
+
+          allUserRewards.unshift(a);
+        });
+
+        paginateRewards();
+
+      } catch (err) {
+        alert("Spin failed: " + err.message);
+      } finally {
+        const btns = document.querySelectorAll('button[onclick^="spin("]');
+        btns.forEach(b => b.disabled = false);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById("resultModal").classList.add("hidden");
+    }
+
+    // pages
+    let allUserRewards = [];
+    let currentPage = 1;
+    const pageSize = 14;
+
+    function paginateRewards() {
+      const container = document.getElementById("user-rewards-container");
+      container.innerHTML = "";
+
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+
+      const pageItems = allUserRewards.slice(start, end);
+      pageItems.forEach(el => container.appendChild(el));
+
+      document.getElementById("pageIndicator").textContent =
+        `Page ${currentPage} of ${Math.ceil(allUserRewards.length / pageSize)}`;
+
+      document.getElementById("prevPage").disabled = currentPage === 1;
+      document.getElementById("nextPage").disabled = end >= allUserRewards.length;
+    }
+
+    document.getElementById("prevPage").addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        paginateRewards();
+      }
+    });
+
+    document.getElementById("nextPage").addEventListener("click", () => {
+      if (currentPage < Math.ceil(allUserRewards.length / pageSize)) {
+        currentPage++;
+        paginateRewards();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById("user-rewards-container");
+      allUserRewards = Array.from(container.children);
+      paginateRewards();
+    });
   </script>
 
 </body>
