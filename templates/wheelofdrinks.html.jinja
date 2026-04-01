@@ -89,7 +89,7 @@
     {% set rare      = rewards | selectattr("Weight", "in", [4,5,6,7]) | list %}
     {% set common    = rewards | selectattr("Weight", "ge", 8) | list %}
 
-    <!-- LEGENDARY -->
+   
     {% if legendary %}
       <h4 class="text-xl font-bold text-yellow-600 mb-2">Legendary</h4>
       <div class="flex gap-4 flex-wrap mb-6">
@@ -112,7 +112,7 @@
       </div>
     {% endif %}
 
-    <!-- EPIC -->
+    
     {% if epic %}
       <h4 class="text-xl font-bold text-purple-600 mb-2">Epic</h4>
       <div class="flex gap-4 flex-wrap mb-6">
@@ -135,7 +135,7 @@
       </div>
     {% endif %}
 
-    <!-- RARE -->
+    
     {% if rare %}
       <h4 class="text-xl font-bold text-blue-600 mb-2">Rare</h4>
       <div class="flex gap-4 flex-wrap mb-6">
@@ -158,7 +158,7 @@
       </div>
     {% endif %}
 
-    <!-- COMMON -->
+    
     {% if common %}
       <h4 class="text-xl font-bold text-gray-600 mb-2">Common</h4>
       <div class="flex gap-4 flex-wrap mb-6">
@@ -191,7 +191,7 @@
     .reward-card { width:140px; text-align:center; }
   </style>
 
-  <!-- JS (PAGINATION ADDED) -->
+  <!-- page thing which idk what its called and all the logic for the wheel which has killed me  -->
   <script>
     function imageUrl(path) {
       if (!path) return '/static/placeholder.png';
@@ -282,7 +282,7 @@
       document.getElementById("resultModal").classList.add("hidden");
     }
 
-    // PAGINATION
+    // pages
     let allUserRewards = [];
     let currentPage = 1;
     const pageSize = 14;
