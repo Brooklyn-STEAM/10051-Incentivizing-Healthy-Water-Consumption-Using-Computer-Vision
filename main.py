@@ -1,4 +1,3 @@
-# app.py
 import traceback
 import random
 from flask import Flask, render_template, redirect, request, flash, abort, session, jsonify, url_for
@@ -86,7 +85,7 @@ def login():
         conn = connect_db()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM `User` WHERE Username = %s", (username,))
+            cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
             result = cursor.fetchone()
         finally:
             try:
@@ -102,11 +101,10 @@ def login():
         else:
             user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
             login_user(user)
-            cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
             return redirect(url_for("wheelofdrinks"))
+
     return render_template("login.html.jinja")
 
-# Register route
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -350,27 +348,30 @@ def friends_list():
 
      return render_template('friends.html.jinja', friends=results)
 
-@app.route('/addfriends' , methods=['GET', 'POST'])
-@login_required
-def add_friends():
+
+
+@app.route('/addfriends' , methods=['GET', 'POST']) 
+@login_required 
+def add_friends(): 
+    connection = connect_db() 
+    cursor = connection.cursor() 
+    cursor.execute(""" SELECT * FROM User """) 
     
-    connection = connect_db()
-    cursor = connection.cursor()
-    cursor.execute(""" SELECT * FROM `User` """)
-     
-
-    if  request.method == "POST":
-      user_id2= request.form["user_id2"]
-     
-     
-      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
-      return redirect('/success')
-
-    results = cursor.fetchall()
-    connection.close()
+    if request.method == "POST": 
+        
+     user_id2= request.form["user_id2"]
     
-
-
+     cursor.execute("INSERT INTO friendships(user_id1,user_id2)VALUES(%s,%s)",(current_user.id,user_id2)) 
+     connection.commit()
+     cursor.close()
+     connection.close()
+     return redirect('/success') 
+    
+    results = cursor.fetchall() 
+    connection.close() 
+    
+    
+ 
     return render_template("addfriends.html.jinja",User=results)
 
 @app.route('/success')
