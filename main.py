@@ -1,404 +1,60 @@
-from flask import Flask, render_template, redirect, request, flash, abort, session, jsonify, url_for
-
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
-
-from werkzeug.utils import secure_filename
-
-import pymysql # Import the PyMySQL library for MySQL database connection
-
-import base64 # used for images
-
-import os #used to upload files
-
-import math # used for the to do the math for the conversion of ml to fl oz and cups
-
-from dynaconf import Dynaconf # Import the Dynaconf library for configuration management
-
-from datetime import datetime #helps get the date and time for the tracker page
-
-from ai_model import predict_capacity #for the ai to load and work
-
 import traceback
-
 import random
+from flask import Flask, render_template, redirect, request, flash, abort, session, jsonify, url_for
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+import pymysql
+from dynaconf import Dynaconf
+from ai_model import predict_volume  # keep if used elsewhere
 
-config = Dynaconf(settings_file = ["settings.toml"])
+# Load configuration
+config = Dynaconf(settings_files=["settings.toml"])
 
 app = Flask(__name__)
+app.secret_key = config.get("SECRET_KEY", "replace-me-with-secret")
 
-app.secret_key = config.secret_key
-
+# Initialize Flask-Login
 login_manager = LoginManager()
-login_manager.login_view = 'login'
+login_manager.login_view = "login"
 login_manager.init_app(app)
 
+# --- User class --------------------------------------------------------------
 class User(UserMixin):
-    def __init__(self, result):
-        self.name = result['Name']
-        self.email = result['Email']
-        self.id = result['ID']
-        self.profile_image = result['profile_image']
+    def __init__(self, id, username=None, email=None):
+        self.id = str(id)
+        self.username = username
+        self.email = email
 
-    def get_id(self):
-        return str(self.id)
+    def __repr__(self):
+        return f"<User id={self.id} username={self.username}>"
 
-@login_manager.user_loader
-def load_user(user_id):
-    connection = connect_db()
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM `User` WHERE `ID` = %s", (user_id,))
-    result = cursor.fetchone()
-    connection.close()
-
-    if result is None:
-        return None
-
-    return User(result)
-
-
-    
-
+# --- Database connection -----------------------------------------------------
 def connect_db():
-    conn = pymysql.connect(
-        host="db.steamcenter.tech",
+    return pymysql.connect(
+        host=config.get("DB_HOST", "db.steamcenter.tech"),
         user=config.USER,
         password=config.PASSWORD,
-        database="daily_drip",
-        autocommit=True,
-        cursorclass=pymysql.cursors.DictCursor
+        database=config.get("DB_NAME", "daily_drip"),
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False
     )
-    return conn
 
-
-tracker_data = {
-    "Monday":0,
-    "Tuesday":0,
-    "Wednesday":0,
-    "Thursday":0,
-    "Friday":0,
-    "Saturday":0,
-    "Sunday":0
-} #used for the tracker data
-
-#All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
-@app.route("/")
-def index():
-    return render_template("homepage.html.jinja")
-
-#for login page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        connection = connect_db()
-        cursor = connection.cursor()
-
-        cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
-        result = cursor.fetchone()
-
-        connection.close()
-
-        if result is None:
-            flash("Username not found!")
-            return render_template("login.html.jinja")
-
-        if password != result["Password"]:
-            flash("Incorrect password!")
-        else:
-            login_user(User(result))
-            return redirect('/Accountpage')
-
-    return render_template("login.html.jinja")
-
-#for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/register", methods=["GET", "POST"])
-def register():
-
-   if  request.method == "POST":
-        name = request.form["name"]
-        username = request.form["username"]
-        email = request.form["email"]
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
-        
-        if password != confirm_password:
-            flash("Passwords do not match!")
-            return render_template("register.html.jinja")
-
-        elif len(password) < 8:
-            flash("Password must be at least 8 characters long")
-            return render_template("register.html.jinja")
-        else:
-            connection = connect_db()
-            cursor = connection.cursor()
-            try: 
-                 # Insert new user
-                cursor.execute("""
-                INSERT INTO User (Name, Email, Password, Username)
-                VALUES (%s, %s, %s, %s)
-                    """, (name, email, password, username))
-                connection.close()
-
-            except pymysql.err.IntegrityError:
-                        flash("Email already registered!")
-                        connection.close()
-                        return render_template("register.html.jinja")
-            else:
-                        flash("Account created successfully!")
-                        return redirect("/login")
-
-    return render_template("register.html.jinja")
-#for the wheel of drinks page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/wheelofdrinks")
-@login_required
-def health_data():
-    if request.method == "POST":
-
-        # ✅ GET FORM DATA
-        weight = float(request.form["Weight"])
-        sex = request.form["Sex"]
-        active = request.form["Active level"]
-        exercise = request.form["Daily Excersize"]
-        climate = request.form["Climate"]
-        health = request.form["Health"]
-
-        # ✅ AGE FROM BIRTHDATE
-        birthday_str = request.form["Age"]
-        birth_date = datetime.strptime(birthday_str, "%Y-%m-%d")
-        today = datetime.today()
-        age = today.year - birth_date.year - (
-            (today.month, today.day) < (birth_date.month, birth_date.day)
-        )
-
-        # 💧 DEFAULT VALUES
-        sex_oz = 1
-        exercise_oz = 0
-        climate_oz = 1
-        health_mult = 1
-        health_bonus = 0
-
-        # 💧 SEX (G)
-        if sex == "Female":
-            sex_oz = 0.95
-        elif sex == "Male":
-            sex_oz = 1.05
-
-        # 💧 EXERCISE
-        if exercise == "0-30":
-            exercise_oz = 12
-        elif exercise == "30-60":
-            exercise_oz = 24
-        elif exercise == "1-2":
-            exercise_oz = 36
-        elif exercise == "2+":
-            exercise_oz = 48
-
-        # 💧 CLIMATE (C)
-        if climate == "Cold":
-            climate_oz = 0.9
-        elif climate == "Mild":
-            climate_oz = 1
-        elif climate == "Hot":
-            climate_oz = 1.2
-
-        # 💧 HEALTH (H + S)
-        if health == "Currently sick":
-            health_bonus = 16
-        elif health == "Kidney problems":
-            health_mult = 0.9
-        elif health == "Heart condition":
-            health_mult = 0.85
-
-        # 💧 FINAL FORMULA
-        water_oz = ((weight / 2) + exercise_oz) * health_mult * climate_oz * sex_oz + health_bonus
-
-        # 💧 CONVERT TO CUPS
-        import math
-        cups = math.ceil(water_oz / 8)
-
-        # ✅ STORE RESULT
-        session["cups"] = cups
-
-        return redirect("/tracker")
-
-    return render_template("healthdata.html.jinja")
-     
-
-
-#for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Accountpage",methods=["GET", "POST"])
-@login_required
-def account_page():
-    if request.method == "POST":
-        file = request.files["picture"]
-        if file:
-            filename = secure_filename(file.filename)
-
-            # save file to static folder
-            file.save(os.path.join("static/profile_pics", filename))
-
-            # store filename (example: simple user object)
-            current_user.profile_image = filename
-            connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute(""" UPDATE User
-                      SET profile_image =%s
-                      WHERE id = %s""", (filename, current_user.id))
-
-        connection.commit()
-
-                
-    
-    return render_template("Accountpage.html.jinja",User=current_user.id)
-
-
-
-
-#for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route('/friends')
-@login_required
-def friends_list():
-     connection = connect_db()
-     cursor = connection.cursor()
-     cursor.execute("""
-            SELECT User.ID, User.username, User.is_online
-            FROM friendships
-            JOIN User 
-            ON User.ID = friendships.user_id2
-           WHERE friendships.user_id1 = %s;
-    """,     (current_user.id,))
-     results = cursor.fetchall()
-     connection.close()
-     return render_template("friends.html.jinja",friends=results)
-
-
-
-#for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files["file"]
-
-    # predict_capacity returns ml and fl_oz as separate floats
-    predicted_ml, predicted_oz = predict_capacity(file)
-
-    return jsonify({
-        "predicted_volume_ml": predicted_ml,
-        "predicted_volume_oz": predicted_oz
-    })
-
-#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route('/tracker')
-@login_required
-def tracker():
-
-    # initialize tracker dictionary
-    tracker_data = {day:0 for day in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]}
-
-    connection = connect_db()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+# --- Flask-Login user loader -------------------------------------------------
+@login_manager.user_loader
+def load_user(user_id):
+    conn = connect_db()
     try:
-        cursor.execute("""
-            SELECT Day, SUM(Volume) AS total_volume
-            FROM water_log
-            WHERE UserID = %s
-            GROUP BY Day
-        """, (current_user.id,))
-        results = cursor.fetchall()
-        for row in results:
-            tracker_data[row['Day']] = row['total_volume'] / 20  # convert ml → drops
-    except Exception as e:
-        print("Error fetching tracker data:", e)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM `User` WHERE ID = %s", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        return User(id=row["ID"], username=row.get("Username"), email=row.get("Email"))
     finally:
-        cursor.close()
-        connection.close()
-
-    days = list(tracker_data.keys())
-    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
-
-
-@app.route("/camera")
-def camera():
-    return render_template("camera.html.jinja")
-
-@app.route('/capture', methods=['POST'])
-def capture():
-    if "file" not in request.files:
-        flash("No file uploaded")
-        return redirect("/camera")
-
-    file = request.files["file"]
-    if file.filename == "":
-        flash("No selected file")
-        return redirect("/camera")
-
-    # Save uploaded image
-    filename = f"drink_{datetime.now().timestamp()}.jpg"
-    filepath = os.path.join("static/user_uploads", filename)
-    file.save(filepath)
-
-    # Predict container capacity in mL
-    capacity_ml, capacity_oz = predict_capacity(filepath)
-    # Convert to cups
-    volume_cups = capacity_ml / 240 
-
-    # Save prediction to DB
-    connection = connect_db()
-    cursor = connection.cursor()
-    try:
-        cursor.execute("""
-        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
-        VALUES (%s, %s, %s, NOW(), %s)
-        """, (current_user.id, 0, volume_cups, filename))
-        connection.commit()
-    finally:
-        cursor.close()
-        connection.close()
-
-    flash(f"Drink logged: {volume_cups:.2f} cups")
-    return redirect("/tracker")
-
-@app.route('/add_drink', methods=['POST'])
-@login_required
-def add_drink():
-    ounces = request.form.get("ounces", type=float)
-
-    if not ounces or ounces <= 0:
-        return {"success": False, "message": "Invalid amount"}
-
-    volume_cups = ounces / 8
-
-    connection = connect_db()
-    cursor = connection.cursor()
-    try:
-        cursor.execute("""
-        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
-        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
-        VALUES (%s, %s, %s, NOW(), %s)
-        """, (current_user.id, 0, volume_cups, None))
-        connection.commit()
-    finally:
-        cursor.close()
-        connection.close()
-
-    flash(f"Drink logged: {ounces} oz ({volume_cups:.2f} cups)")   
-    return redirect("/tracker")
-
-# ----------------------------
-# TESTING PREDICTION
-# ----------------------------
-if __name__ == "__main__":
-    test_image = "static/user_uploads/drink_1774962039.119192.jpg"
-
-    predicted_ml, predicted_oz = predict_capacity(test_image)
-
-    print(f"Predicted volume: {predicted_ml:.1f} mL / {predicted_oz:.2f} fl oz")
-
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        conn.close()
 
 # --- Utility: weighted reward picker ----------------------------------------
 def pick_weighted_rewards(all_rewards, count):
@@ -414,7 +70,81 @@ def pick_weighted_rewards(all_rewards, count):
         return []
     return [random.choice(pool) for _ in range(count)]
 
+# --- Routes ------------------------------------------------------------------
+@app.route("/")
+def index():
+    return render_template("homepage.html.jinja")
 
+# Login route
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = connect_db()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
+            result = cursor.fetchone()
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            conn.close()
+
+        if result is None:
+            flash("Username not registered!")
+        elif password != result.get("Password"):
+            flash("Incorrect password!")
+        else:
+            user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
+            login_user(user)
+            return redirect(url_for("wheelofdrinks"))
+
+    return render_template("login.html.jinja")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form.get("name")
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        if password != confirm_password:
+            flash("Passwords do not match!")
+            return render_template("register.html.jinja")
+        if len(password or "") < 8:
+            flash("Password must be at least 8 characters long")
+            return render_template("register.html.jinja")
+
+        conn = connect_db()
+        try:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    INSERT INTO `User` (Name, Email, Password, Username)
+                    VALUES (%s, %s, %s, %s)
+                """, (name, email, password, username))
+                conn.commit()
+            except pymysql.err.IntegrityError:
+                conn.rollback()
+                flash("Email or username already registered!")
+                return render_template("register.html.jinja")
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            conn.close()
+
+        flash("Account created successfully!")
+        return redirect(url_for("login"))
+
+    return render_template("register.html.jinja")
 
 # Wheel of drinks route
 @app.route("/wheelofdrinks")
@@ -560,6 +290,7 @@ def gacha_spin():
 
 #for the results page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/reward/<int:reward_id>")
+@login_required
 def reward_detail(reward_id):
     conn = connect_db()
     cursor = conn.cursor()
@@ -592,6 +323,166 @@ def reward_detail(reward_id):
                            reward=reward,
                            rarity=rarity)
 
+#for the account page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/Accountpage")
+def account_page():
+
+    return render_template("Accountpage.html.jinja")
+
+#for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route('/friends')
+@login_required
+def friends_list():
+     connection = connect_db()
+     cursor = connection.cursor()
+     cursor.execute("""
+            SELECT User.ID, User.username, User.is_online
+            FROM friendships
+            JOIN User 
+            ON User.ID = friendships.user_id2
+           WHERE friendships.user_id1 = %s;
+    """,     (current_user.id,))
+     results = cursor.fetchall()
+     connection.close()
+
+
+     return render_template('friends.html.jinja', friends=results)
+
+
+
+@app.route('/addfriends' , methods=['GET', 'POST']) 
+@login_required 
+def add_friends(): 
+    connection = connect_db() 
+    cursor = connection.cursor() 
+    cursor.execute(""" SELECT * FROM User """) 
+    
+    if request.method == "POST": 
+        
+     user_id2= request.form["user_id2"]
+    
+     cursor.execute("INSERT INTO friendships(user_id1,user_id2)VALUES(%s,%s)",(current_user.id,user_id2)) 
+     connection.commit()
+     cursor.close()
+     connection.close()
+     return redirect('/success') 
+    
+    results = cursor.fetchall() 
+    connection.close() 
+    
+    
+ 
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
+
+
+
+
+
+
+
+#for the logout page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
+    return redirect("/")
+#for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    predicted_volume = predict_volume(file)
+    return jsonify({"predicted_volume": predicted_volume})
+
+#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/tracker")  
+def tracker():
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    tracker_data = {
+        "Monday": 2,
+        "Tuesday": 5,
+        "Wednesday": 2,
+        "Thursday": 0,
+        "Friday": 0,
+        "Saturday": 0,
+        "Sunday": 0
+    }
+    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
+#for the camera (incomplete) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/camera")
+def camera():
+    return render_template("camera.html.jinja")
+
+#for the health data page where users can input their health data and it will be saved to the database.----------------------------------------------------------------------------------------------------------------------
+@app.route("/healthdata", methods=["GET", "POST"])
+@login_required
+def healthdata():
+
+    if request.method == "POST":
+
+        age = request.form.get("age")
+        weight = request.form.get("weight")
+        sex = request.form.get("sex")
+        exercise = request.form.get("exercise")
+        climate = request.form.get("climate")
+
+        health = request.form.getlist("health")
+        health_string = ", ".join(health)
+
+        connection = connect_db()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        INSERT INTO `Health Data`
+        (UserID, Weight, Sex, `Daily Exercise`, `Local Weather`, `Health Considerations`)
+        VALUES (%s,%s,%s,%s,%s,%s)
+        """, (
+            current_user.id,
+            weight,
+            sex,
+            exercise,
+            climate,
+            health_string
+        ))
+
+        connection.close()
+
+        flash("Health data saved!")
+        return redirect("/Accountpage")
+
+    return render_template("healthdata.html.jinja")
+
+
+ 
 #for the catalog page where users can see the rewards they have earned and how many points they have.------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/catalog")
 @login_required

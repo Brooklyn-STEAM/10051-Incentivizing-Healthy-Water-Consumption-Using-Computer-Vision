@@ -102,8 +102,8 @@ def login():
         else:
             user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
             login_user(user)
+            cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
             return redirect(url_for("wheelofdrinks"))
-        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
     return render_template("login.html.jinja")
 
 # Register route

@@ -37,7 +37,10 @@
         </div>
 
         <!-- Friends List -->
-    <ul>
+    
+       
+                 <h1>Your Friends</h1>
+        <ul>
        {% for friend in friends %}
             
                 <li class="p-3 hover:bg-gray-50 flex justify-between items-center" >
@@ -55,12 +58,10 @@
                {% endif %}
 
                 </li>
+            {% endfor %}
+        </ul>
             
-        {% endfor %}
-      
-    </ul>
-      
-    </div>
+</div>
 
 </div>
 
