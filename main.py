@@ -342,5 +342,3 @@ if __name__ == "__main__":
     predicted_ml, predicted_oz = predict_capacity(test_image)
 
     print(f"Predicted volume: {predicted_ml:.1f} mL / {predicted_oz:.2f} fl oz")
-
-
