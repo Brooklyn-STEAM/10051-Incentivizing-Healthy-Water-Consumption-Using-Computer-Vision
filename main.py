@@ -101,6 +101,14 @@ def login():
         else:
             user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
             login_user(user)
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE User SET is_online = 1 WHERE ID = %s",
+                (user.id,))
+            conn.commit()
+            cursor.close()
+            conn.close()
             return redirect(url_for("wheelofdrinks"))
 
     return render_template("login.html.jinja")
