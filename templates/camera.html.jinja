@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drink Camera</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="bg-white">
+
+{% include "components/navbar.html.jinja" %}
+
+<div class="flex flex-col items-center mt-12">
+
+    <h2 class="text-2xl text-sky-700 mb-6">
+        Take a Photo of Your Drink
+    </h2>
+
+    <!-- Upload form -->
+    <form id="uploadForm" action="{{ url_for('capture') }}" method="POST" enctype="multipart/form-data" class="flex flex-col items-center gap-4">
+        <input type="file" id="fileInput" name="file" accept="image/*" class="border rounded-lg p-2" required>
+        <button type="submit" class="mt-6 bg-sky-500 text-white px-6 py-3 rounded-lg">
+            Upload & Log Drink
+        </button>
+    </form>
+
+</div>
+
+<script>
+    // Simple mobile detection
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const fileInput = document.getElementById("fileInput");
+
+    if (isMobile) {
+        // On mobile, open camera automatically
+        fileInput.setAttribute("capture", "environment");
+    }
+
+    // Trigger file input automatically
+    window.addEventListener("DOMContentLoaded", () => {
+        fileInput.click();
+    });
+</script>
+
+</body>
+</html>
