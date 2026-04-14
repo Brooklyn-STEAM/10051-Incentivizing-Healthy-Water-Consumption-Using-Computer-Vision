@@ -76,77 +76,6 @@ def pick_weighted_rewards(all_rewards, count):
 def index():
     return render_template("homepage.html.jinja")
 
-# Login route
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        conn = connect_db()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM `User` WHERE Username = %s", (username,))
-            result = cursor.fetchone()
-        finally:
-            try:
-                cursor.close()
-            except Exception:
-                pass
-            conn.close()
-
-        if result is None:
-            flash("Username not registered!")
-        elif password != result.get("Password"):
-            flash("Incorrect password!")
-        else:
-            user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
-            login_user(user)
-            return redirect(url_for("wheelofdrinks"))
-        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
-    return render_template("login.html.jinja")
-
-# Register route
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        name = request.form.get("name")
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
-
-        if password != confirm_password:
-            flash("Passwords do not match!")
-            return render_template("register.html.jinja")
-        if len(password or "") < 8:
-            flash("Password must be at least 8 characters long")
-            return render_template("register.html.jinja")
-
-        conn = connect_db()
-        try:
-            cursor = conn.cursor()
-            try:
-                cursor.execute("""
-                    INSERT INTO `User` (Name, Email, Password, Username)
-                    VALUES (%s, %s, %s, %s)
-                """, (name, email, password, username))
-                conn.commit()
-            except pymysql.err.IntegrityError:
-                conn.rollback()
-                flash("Email or username already registered!")
-                return render_template("register.html.jinja")
-        finally:
-            try:
-                cursor.close()
-            except Exception:
-                pass
-            conn.close()
-
-        flash("Account created successfully!")
-        return redirect(url_for("login"))
-
-    return render_template("register.html.jinja")
 
 # Wheel of drinks route
 @app.route("/wheelofdrinks")
@@ -414,34 +343,8 @@ def logout():
     cursor = connection.cursor()
     cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
     return redirect("/")
-#for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
 
-    file = request.files["file"]
-    predicted_volume = predict_volume(file)
-    return jsonify({"predicted_volume": predicted_volume})
 
-#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/tracker")  
-def tracker():
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    tracker_data = {
-        "Monday": 2,
-        "Tuesday": 5,
-        "Wednesday": 2,
-        "Thursday": 0,
-        "Friday": 0,
-        "Saturday": 0,
-        "Sunday": 0
-    }
-    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
-#for the camera (incomplete) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/camera")
-def camera():
-    return render_template("camera.html.jinja")
 
 #for the health data page where users can input their health data and it will be saved to the database.----------------------------------------------------------------------------------------------------------------------
 @app.route("/healthdata", methods=["GET", "POST"])

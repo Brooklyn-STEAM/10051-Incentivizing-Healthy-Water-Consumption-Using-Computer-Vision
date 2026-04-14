@@ -77,12 +77,41 @@
 
     <div class="mt-12 border-t pt-8 text-center">
 
-      <h2 class="text-sky-700 text-xl font-semibold mb-4">Add a Drink</h2>
+      <h2 class="text-sky-700 text-xl font-semibold mb-6">Add a Drink</h2>
 
+      <!-- 📸 Camera Button -->
       <a href="{{ url_for('camera') }}"
-        class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition inline-block">
+        class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition inline-block">
         Take Photo
       </a>
+
+      <!-- ✍️ Manual Option -->
+      <div class="mt-6">
+
+        <p class="text-sky-600 text-sm mb-2 font-medium">
+          or do it manually
+        </p>
+
+        <form method="POST" action="{{ url_for('add_drink') }}" class="flex justify-center items-center gap-3">
+
+          <input 
+            type="number"
+            name="ounces"
+            min="0"
+            step="0.1"
+            placeholder="oz"
+            class="w-28 px-4 py-2 rounded-lg border border-sky-300 text-center"
+          />
+
+          <button 
+            type="submit"
+            class="bg-white border border-sky-400 text-sky-600 hover:bg-sky-50 px-4 py-2 rounded-lg font-medium transition">
+            Add
+          </button>
+
+        </form>
+
+      </div>
 
     </div>
 
