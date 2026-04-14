@@ -94,13 +94,11 @@ class MultiTaskDataset(Dataset):
         }
     
 # Automatically get max volume from dataset
-# ----------------------------
-dataset_for_max = MultiTaskDataset(
+# dataset_for_max = MultiTaskDataset(
     "static/COQE_dataset/train.json",
     "static/COQE_dataset/train_pour_prediction.json",
     "static/COQE_dataset/images",
-    processor
-)
+   # processor)
 
 # ----------------------------
 # DataLoader

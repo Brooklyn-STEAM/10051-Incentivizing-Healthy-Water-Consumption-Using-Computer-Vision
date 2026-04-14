@@ -111,9 +111,8 @@ def login():
             flash("Incorrect password!")
         else:
             login_user(User(result))
-            return redirect('/Accountpage')
-       
-        
+            return redirect("/Accountpage")
+           
     return render_template("login.html.jinja")
 
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -228,18 +227,6 @@ def health_data():
     return render_template("healthdata.html.jinja")
      
 
-#for the wheel of drinks page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Wheelofdrinks")
-def wheel():
- #Connect to the database and retrieve all the drink names from the Drink table, then render the Wheelofdrinks.html.jinja template with the retrieved drink names passed as a variable for display on the page.
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("SELECT Name FROM Recipe")
-        Rewards = cursor.fetchall() 
-
-        connection.close()
-
-        return render_template("Wheelofdrinks.html.jinja")
 
 #for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/Accountpage")
@@ -299,11 +286,6 @@ def tracker():
     days = list(tracker_data.keys())
     return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
 
-#for the camera (incomplete) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/camera")
-@login_required
-def camera():
-    return render_template("camera.html.jinja")
 
 @app.route('/capture', methods=['POST'])
 @login_required
@@ -343,6 +325,30 @@ def capture():
     flash(f"Drink logged: {volume_cups:.2f} cups")
     return redirect("/tracker")
 
+@app.route('/add_drink', methods=['POST'])
+@login_required
+def add_drink():
+    ounces = request.form.get("ounces", type=float)
+
+    if not ounces or ounces <= 0:
+        return {"success": False, "message": "Invalid amount"}
+
+    volume_cups = ounces / 8
+
+    connection = connect_db()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("""
+        INSERT INTO `Water Consumption` (UserID, Points, Oz, Timestamp, Image)
+        VALUES (%s, %s, %s, NOW(), %s)
+        """, (current_user.id, 0, volume_cups, None))
+        connection.commit()
+    finally:
+        cursor.close()
+        connection.close()
+
+    flash(f"Drink logged: {ounces} oz ({volume_cups:.2f} cups)")   
+    return redirect("/tracker")
 
 # ----------------------------
 # TESTING PREDICTION
