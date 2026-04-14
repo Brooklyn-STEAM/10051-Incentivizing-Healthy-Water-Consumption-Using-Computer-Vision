@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, flash, abort # Import necessary functions and classes from the Flask library for web application development, including rendering templates, handling redirects, processing requests, flashing messages, and aborting requests
+from flask import Flask, render_template, redirect, request, flash, abort, jsonify, session # Import necessary functions and classes from the Flask library for web application development, including rendering templates, handling redirects, processing requests, flashing messages, and aborting requests
 
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
 
@@ -8,6 +8,8 @@ import base64 # used for images
 
 import os #used to upload files
 
+import math # used for the to do the math for the conversion of ml to fl oz and cups
+
 from dynaconf import Dynaconf # Import the Dynaconf library for configuration management
 
 from datetime import datetime #helps get the date and time for the tracker page
@@ -15,6 +17,8 @@ from datetime import datetime #helps get the date and time for the tracker page
 from ai_model import load_model, predict_capacity #for the ai to load and work
 
 model = load_model()
+
+
 
 
 
@@ -153,42 +157,47 @@ def register():
 @app.route("/healthdata", methods=["GET", "POST"])
 def health_data():
     if request.method == "POST":
-        weight = request.form["Weight"]
-        age = request.form["Age"]
+
+        # ✅ GET FORM DATA
+        weight = float(request.form["Weight"])
         sex = request.form["Sex"]
         active = request.form["Active level"]
         exercise = request.form["Daily Excersize"]
         climate = request.form["Climate"]
         health = request.form["Health"]
-        # Convert birthday to age
-        birthday_str = request.form["Age"]  # this is a date string like "2005-04-12"
+
+        # ✅ AGE FROM BIRTHDATE
+        birthday_str = request.form["Age"]
         birth_date = datetime.strptime(birthday_str, "%Y-%m-%d")
         today = datetime.today()
         age = today.year - birth_date.year - (
             (today.month, today.day) < (birth_date.month, birth_date.day)
         )
-        # 💧 WATER CALCULATION GOES HERE
-        # -------------------------------
-        water = weight * 0.5
 
-        #Sex
+        # 💧 DEFAULT VALUES
+        sex_oz = 1
+        exercise_oz = 0
+        climate_oz = 1
+        health_mult = 1
+        health_bonus = 0
+
+        # 💧 SEX (G)
         if sex == "Female":
             sex_oz = 0.95
         elif sex == "Male":
             sex_oz = 1.05
-        
 
-        # Exercise
+        # 💧 EXERCISE
         if exercise == "0-30":
             exercise_oz = 12
         elif exercise == "30-60":
             exercise_oz = 24
         elif exercise == "1-2":
-            exercise_oz = 36  # midpoint of 24–48
+            exercise_oz = 36
         elif exercise == "2+":
-            exercise_oz = 48  # base amount
-        
-        #Climate
+            exercise_oz = 48
+
+        # 💧 CLIMATE (C)
         if climate == "Cold":
             climate_oz = 0.9
         elif climate == "Mild":
@@ -196,24 +205,26 @@ def health_data():
         elif climate == "Hot":
             climate_oz = 1.2
 
-        #Health
+        # 💧 HEALTH (H + S)
         if health == "Currently sick":
-            health_oz = 16 
+            health_bonus = 16
         elif health == "Kidney problems":
-            health_oz = 0.9
+            health_mult = 0.9
         elif health == "Heart condition":
-            health_oz = 0.85
-        
-        #make the equation for this btw on monday 
+            health_mult = 0.85
 
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("""
-                    INSERT INTO `Health Data` (`UserID`, `Weight`, `Age`, `Sex`, `Active`, `Daily Excersize`, `Local Weather`, `Health Considerations`)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, (current_user.id, weight, age, sex, active, excersize, climate, health))
-        connection.close()
-        return redirect('/login')
+        # 💧 FINAL FORMULA
+        water_oz = ((weight / 2) + exercise_oz) * health_mult * climate_oz * sex_oz + health_bonus
+
+        # 💧 CONVERT TO CUPS
+        import math
+        cups = math.ceil(water_oz / 8)
+
+        # ✅ STORE RESULT
+        session["cups"] = cups
+
+        return redirect("/tracker")
+
     return render_template("healthdata.html.jinja")
      
 
