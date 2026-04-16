@@ -344,7 +344,7 @@ def add_drink():
     cursor = connection.cursor()
     try:
         cursor.execute("""
-        INSERT INTO `Water Consumption` (UserID, Points, Oz, Timestamp, Image)
+        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
         VALUES (%s, %s, %s, NOW(), %s)
         """, (current_user.id, 0, volume_cups, None))
         connection.commit()
