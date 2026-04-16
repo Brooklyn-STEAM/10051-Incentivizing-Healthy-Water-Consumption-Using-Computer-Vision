@@ -4,7 +4,8 @@ from flask import Flask, render_template, redirect, request, flash, abort, sessi
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 import pymysql
 from dynaconf import Dynaconf
-from ai_model import predict_volume  # keep if used elsewhere
+from ai_model import predict_volume
+  # keep if used elsewhere
 
 # Load configuration
 config = Dynaconf(settings_files=["settings.toml"])
@@ -352,10 +353,31 @@ def friends_list():
     """,     (current_user.id,))
      results = cursor.fetchall()
      connection.close()
-
-
      return render_template('friends.html.jinja', friends=results)
 
+@app.route("/create_group", methods=["GET", "POST"])
+@login_required
+def create_group():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        privacy = request.form.get('privacy')
+
+        # Validation
+        if not name:
+            flash("Group name is required", "error")
+            return render_template('create_group.html')
+
+        # Save to database (pseudo)
+        # db.create_group(name, description, privacy)
+
+        flash("Group created successfully!", "success")
+        return redirect(url_for('create_group'))
+
+    return render_template('create_group.html.jinja')
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 
 @app.route('/addfriends' , methods=['GET', 'POST']) 
