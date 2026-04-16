@@ -287,6 +287,11 @@ def tracker():
     return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
 
 
+@app.route("/camera")
+@login_required
+def camera():
+    return render_template("camera.html.jinja")
+
 @app.route('/capture', methods=['POST'])
 @login_required
 def capture():
