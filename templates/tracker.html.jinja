@@ -32,6 +32,21 @@
       Daily Water Tracker
     </h1>
 
+    <!-- ⭐ DAILY GOAL / DRANK TODAY / REMAINING ⭐ -->
+    <div class="text-center mb-10">
+      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm">
+        <p class="text-sky-700 font-semibold text-xl">
+          Daily Goal: <span class="font-bold">{{ daily_goal }}</span> cups
+        </p>
+        <p class="text-sky-700 font-semibold text-xl mt-1">
+          Drank Today: <span class="font-bold">{{ cups_drank }}</span> cups
+        </p>
+        <p class="text-sky-700 font-semibold text-xl mt-1">
+          Remaining: <span class="font-bold">{{ cups_left }}</span> cups
+        </p>
+      </div>
+    </div>
+
     <!-- Points Display -->
     <div class="text-center mb-10">
       <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm">
@@ -40,6 +55,7 @@
       </div>
     </div>
 
+    <!-- WEEKLY DROPS -->
     {% for day in days %}
     <div class="flex items-center justify-between mb-6">
 
@@ -51,12 +67,12 @@
       <!-- Drops -->
       <div class="flex gap-3">
 
-        {% for i in range(daily_goal) %}
+        {% for i in range(8) %}
           {% set drop_value = tracker_data[day] - i %}
 
           {% if drop_value >= 1 %}
             <!-- Full drop -->
-            <svg class="w-9 h-9" viewBox="0 0 24 24" fill="#38BDF8">
+            <svg class="w-9 h-9" viewBox="0 0 24 24" fill="#7DD3FC">
               <path d="M12 2C12 2 4 10 4 16C4 20.418 7.582 24 12 24C16.418 24 20 20.4183 20 16C20 10 12 2 12 2Z"/>
             </svg>
 
@@ -66,11 +82,11 @@
             <svg class="w-9 h-9" viewBox="0 0 24 24">
               <path d="M12 2C12 2 4 10 4 16C4 20.418 7.582 24 12 24C16.418 24 20 20.4183 20 16C20 10 12 2 12 2Z"
                     fill="none" stroke="#93C5FD" stroke-width="2"/>
-              <rect x="4" y="{{ 24 - 20*fraction }}" width="16" height="{{ 20*fraction }}" fill="#38BDF8"/>
+              <rect x="4" y="{{ 24 - 20*fraction }}" width="16" height="{{ 20*fraction }}" fill="#7DD3FC"/>
             </svg>
 
           {% else %}
-            <!-- Empty drop -->
+            <!-- Empty -->
             <svg class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="#BFDBFE" stroke-width="2">
               <path d="M12 2C12 2 4 10 4 16C4 20.418 7.582 24 12 24C16.418 24 20 20.4183 20 16C20 10 12 2 12 2Z"/>
             </svg>
