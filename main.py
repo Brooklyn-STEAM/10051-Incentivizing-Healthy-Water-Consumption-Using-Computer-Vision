@@ -438,10 +438,10 @@ def remove_friend(friend_id):
 @app.route("/logout")
 @login_required
 def logout():
-    logout_user()
     connection = connect_db()
     cursor = connection.cursor()
     cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
+    connection.commit()
     return redirect("/")
 #for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/predict", methods=["POST"])
