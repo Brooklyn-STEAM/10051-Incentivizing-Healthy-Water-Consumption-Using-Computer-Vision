@@ -1,7 +1,4 @@
-
-
-
- <!doctype html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -22,9 +19,9 @@
 
     <label for="age">Age</label>
     <input
-      type="number"
-      name="age"
-      id="age"
+      type="date"
+      name="Age"
+      id="birthday"
       required
       class="border px-3 py-2 rounded"
     />
@@ -33,7 +30,7 @@
     <label for="weight">Weight (lbs)</label>
     <input
       type="number"
-      name="weight"
+      name="Weight"
       id="weight"
       required
       placeholder="Enter your weight in lbs"
@@ -44,17 +41,17 @@
     <label class="font-medium">Sex</label>
     <div class="flex gap-4">
       <label>
-        <input type="radio" name="sex" value="female" required>
+        <input type="radio" name="Sex" value="female" required>
         Female
       </label>
 
       <label>
-        <input type="radio" name="sex" value="male" required>
+        <input type="radio" name="Sex" value="male">
         Male
       </label>
 
       <label>
-        <input type="radio" name="sex" value="prefer_not" required>
+        <input type="radio" name="Sex" value="prefer_not">
         Prefer not to say
       </label>
     </div>
@@ -62,17 +59,17 @@
     <label class="font-medium">How active are you?</label>
     <div class="flex flex-col gap-1">
       <label>
-        <input type="radio" name="activity_level" value="not_active">
+        <input type="radio" name="Active level" value="not_active" required>
         Not very active
       </label>
 
       <label>
-        <input type="radio" name="activity_level" value="moderate">
+        <input type="radio" name="Active level" value="moderate">
         Moderately active
       </label>
 
       <label>
-        <input type="radio" name="activity_level" value="very_active">
+        <input type="radio" name="Active level" value="very_active">
         Very active
       </label>
     </div>
@@ -81,22 +78,22 @@
     <label class="font-medium">How much do you exercise daily?</label>
     <div class="flex flex-col gap-1">
       <label>
-        <input type="radio" name="exercise" value="0_30" required>
+        <input type="radio" name="Daily Excersize" value="0_30" required>
         0–30 minutes
       </label>
 
       <label>
-        <input type="radio" name="exercise" value="30_60" required>
+        <input type="radio" name="Daily Excersize" value="30_60">
         30–60 minutes
       </label>
 
       <label>
-        <input type="radio" name="exercise" value="1_2" required>
+        <input type="radio" name="Daily Excersize" value="1_2">
         1–2 hours
       </label>
 
       <label>
-        <input type="radio" name="exercise" value="2_plus" required>
+        <input type="radio" name="Daily Excersize" value="2_plus">
         2+ hours
       </label>
     </div>
@@ -105,17 +102,17 @@
     <label class="font-medium">What’s the usual weather like?</label>
     <div class="flex gap-4">
       <label>
-        <input type="radio" name="climate" value="cold" required>
+        <input type="radio" name="Climate" value="cold" required>
         Cold
       </label>
 
       <label>
-        <input type="radio" name="climate" value="mild" required>
+        <input type="radio" name="Climate" value="mild">
         Mild
       </label>
 
       <label>
-        <input type="radio" name="climate" value="hot" required>
+        <input type="radio" name="Climate" value="hot">
         Hot
       </label>
     </div>
@@ -123,22 +120,22 @@
     <label class="font-medium">Health considerations (optional)</label>
     <div class="flex flex-col gap-1">
       <label>
-        <input type="checkbox" name="health" value="kidney">
+        <input type="checkbox" name="Health" value="kidney">
         Kidney problems
       </label>
 
       <label>
-        <input type="checkbox" name="health" value="heart">
+        <input type="checkbox" name="Health" value="heart">
         Heart condition
       </label>
 
       <label>
-        <input type="checkbox" name="health" value="sick">
+        <input type="checkbox" name="Health" value="sick">
         Currently sick
       </label>
 
       <label>
-        <input type="checkbox" name="health" value="none" id="none-checkbox">
+        <input type="checkbox" name="Health" value="none">
         None of the above
       </label>
     </div>

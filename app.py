@@ -325,6 +325,8 @@ def reward_detail(reward_id):
                            reward=reward,
                            rarity=rarity)
 
+
+
 #for the account page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/Accountpage")
 def account_page():
@@ -334,7 +336,69 @@ def account_page():
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
 @login_required
+@login_required
 def friends_list():
+     connection = connect_db()
+     cursor = connection.cursor()
+     cursor.execute("""
+            SELECT User.ID, User.username, User.is_online
+            FROM friendships
+            JOIN User 
+            ON User.ID = friendships.user_id2
+           WHERE friendships.user_id1 = %s;
+    """,     (current_user.id,))
+     results = cursor.fetchall()
+     connection.close()
+
+
+     return render_template('friends.html.jinja', friends=results)
+
+@app.route('/addfriends' , methods=['GET', 'POST'])
+@login_required
+def add_friends():
+    
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" SELECT * FROM `User` """)
+     
+
+    if  request.method == "POST":
+      user_id2= request.form["user_id2"]
+     
+     
+      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
+      return redirect('/success')
+
+    results = cursor.fetchall()
+    connection.close()
+    
+
+
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
      connection = connect_db()
      cursor = connection.cursor()
      cursor.execute("""
@@ -411,35 +475,12 @@ def logout():
     connection = connect_db()
     cursor = connection.cursor()
     cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
     return redirect("/")
-#for the ai I am not sure if it works yet------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
 
-    file = request.files["file"]
-    predicted_volume = predict_volume(file)
-    return jsonify({"predicted_volume": predicted_volume})
 
-#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/tracker")  
-def tracker():
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    tracker_data = {
-        "Monday": 2,
-        "Tuesday": 5,
-        "Wednesday": 2,
-        "Thursday": 0,
-        "Friday": 0,
-        "Saturday": 0,
-        "Sunday": 0
-    }
-    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
-#for the camera (incomplete) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/camera")
-def camera():
-    return render_template("camera.html.jinja")
 
 #for the health data page where users can input their health data and it will be saved to the database.----------------------------------------------------------------------------------------------------------------------
 @app.route("/healthdata", methods=["GET", "POST"])
