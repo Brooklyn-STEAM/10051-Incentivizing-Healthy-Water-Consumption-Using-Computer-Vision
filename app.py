@@ -76,6 +76,77 @@ def pick_weighted_rewards(all_rewards, count):
 def index():
     return render_template("homepage.html.jinja")
 
+# Login route
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = connect_db()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM `User` WHERE Username = %s", (username,))
+            result = cursor.fetchone()
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            conn.close()
+
+        if result is None:
+            flash("Username not registered!")
+        elif password != result.get("Password"):
+            flash("Incorrect password!")
+        else:
+            user = User(id=result["ID"], username=result.get("Username"), email=result.get("Email"))
+            login_user(user)
+            cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (current_user.id,))
+            return redirect(url_for("wheelofdrinks"))
+    return render_template("login.html.jinja")
+
+# Register route
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form.get("name")
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        if password != confirm_password:
+            flash("Passwords do not match!")
+            return render_template("register.html.jinja")
+        if len(password or "") < 8:
+            flash("Password must be at least 8 characters long")
+            return render_template("register.html.jinja")
+
+        conn = connect_db()
+        try:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    INSERT INTO `User` (Name, Email, Password, Username)
+                    VALUES (%s, %s, %s, %s)
+                """, (name, email, password, username))
+                conn.commit()
+            except pymysql.err.IntegrityError:
+                conn.rollback()
+                flash("Email or username already registered!")
+                return render_template("register.html.jinja")
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            conn.close()
+
+        flash("Account created successfully!")
+        return redirect(url_for("login"))
+
+    return render_template("register.html.jinja")
 
 # Wheel of drinks route
 @app.route("/wheelofdrinks")
@@ -265,7 +336,69 @@ def account_page():
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
 @login_required
+@login_required
 def friends_list():
+     connection = connect_db()
+     cursor = connection.cursor()
+     cursor.execute("""
+            SELECT User.ID, User.username, User.is_online
+            FROM friendships
+            JOIN User 
+            ON User.ID = friendships.user_id2
+           WHERE friendships.user_id1 = %s;
+    """,     (current_user.id,))
+     results = cursor.fetchall()
+     connection.close()
+
+
+     return render_template('friends.html.jinja', friends=results)
+
+@app.route('/addfriends' , methods=['GET', 'POST'])
+@login_required
+def add_friends():
+    
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" SELECT * FROM `User` """)
+     
+
+    if  request.method == "POST":
+      user_id2= request.form["user_id2"]
+     
+     
+      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
+      return redirect('/success')
+
+    results = cursor.fetchall()
+    connection.close()
+    
+
+
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
      connection = connect_db()
      cursor = connection.cursor()
      cursor.execute("""
@@ -339,6 +472,9 @@ def remove_friend(friend_id):
 @login_required
 def logout():
     logout_user()
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))
     connection = connect_db()
     cursor = connection.cursor()
     cursor.execute("UPDATE User SET is_online = 0 WHERE ID = %s", (current_user.id,))

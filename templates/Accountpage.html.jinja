@@ -1,1 +1,60 @@
+<!doctype html>
+<html>
 
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="bg-gradient-to-b to-white min-h-screen flex items-center justify-center p-6">
+{% include "components/navbar.html.jinja"%}
+  
+<div class=" w-160 h-80 grid md:grid-cols-2 gap-6">
+
+<div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-75 w-80 -mt-50">
+
+
+ <div class="h-35 w-35 rounded-full bg-white flex-center items-center justify-center text-center text-sm pt-12 ">
+  Edit Profile
+  </div>
+
+    {%if not current_user.is_authenticated %}
+ <a href="/login" class=" px-7 gap-2"></a>
+    {%else%}
+<h1 class="text-center font-bold text-2xl text-white">Hi, {{current_user.username}}</h1>
+    {%endif%}
+
+ </div>
+
+<div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-120 w-100 -mt-30 ml-30">
+
+
+<h1 class="font-bold text-2xl text-white">
+
+Water 
+<br>
+Consummtion
+</h1>
+ <div class="w-80 h-100 bg-white rounded-xl">
+<span class="text-blue-200 text-center font-bold"></span>
+ </div>
+ </div>
+
+
+<div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-75 w-90 -mt-35">
+
+<h1 class="text-center font-bold text-2xl text-white">Daily Goal</h1>
+
+
+
+<br>
+<div class="w-70 h-85 bg-white rounded-none">
+<span class="text-blue-200 text-center font-bold"></span>
+</div>
+
+
+
+
+
+ </body>
