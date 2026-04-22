@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, flash, abort, jsonify, session # Import necessary functions and classes from the Flask library for web application development, including rendering templates, handling redirects, processing requests, flashing messages, and aborting requests
+from flask import Flask, render_template, redirect, request, flash, abort, session, jsonify, url_for
 
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
 
@@ -14,59 +14,48 @@ from dynaconf import Dynaconf # Import the Dynaconf library for configuration ma
 
 from datetime import datetime #helps get the date and time for the tracker page
 
-from ai_model import load_model, predict_capacity #for the ai to load and work
+from ai_model import predict_capacity #for the ai to load and work
 
-model = load_model()
+import traceback
+
+import random
 
 
+config = Dynaconf(settings_file = ["settings.toml"])
 
+app = Flask(__name__)
 
-
-config = Dynaconf(settings_files=['settings.toml'])
-
-app = Flask(__name__)# Create a Flask application instance
-
-tracker_data = {
-    "Monday":0,
-    "Tuesday":0,
-    "Wednesday":0,
-    "Thursday":0,
-    "Friday":0,
-    "Saturday":0,
-    "Sunday":0
-} #used for the tracker data
+app.secret_key = config.secret_key
 
 login_manager = LoginManager()
+login_manager.login_view = 'login'
 login_manager.init_app(app)
-login_manager.login_view = "login" 
-app.secret_key = "nchdwnuhwwenedwn"
 
 class User(UserMixin):
-    def __init__(self, user_data):
-        self.id = user_data["ID"]
-        self.name = user_data["Name"]
-        self.email = user_data["Email"]
+    def __init__(self, result):
+        self.name = result['Name']
+        self.email = result['Email']
+        self.id = result['ID']
 
-config = Dynaconf(settings_file = ["settings.toml"]) # Load the configuration from the settings.toml file
+    def get_id(self):
+        return str(self.id)
 
-# Define a user loader function for Flask-Login to load a user from the database based on the user ID stored in the session. This function connects to the database, retrieves the user data, and returns a User object if found, or None if not found.
-@login_manager.user_loader 
+@login_manager.user_loader
 def load_user(user_id):
-
     connection = connect_db()
     cursor = connection.cursor()
-
-    cursor.execute("SELECT * FROM User WHERE ID = %s", (user_id,))
-    user = cursor.fetchone()
-
+    cursor.execute("SELECT * FROM `User` WHERE `ID` = %s", (user_id,))
+    result = cursor.fetchone()
     connection.close()
 
-    if user:
-        return User(user)
+    if result is None:
+        return None
 
-    return None
+    return User(result)
 
-#connect to database------------------------------------------------------------------------------------------------
+
+    
+
 def connect_db():
     conn = pymysql.connect(
         host="db.steamcenter.tech",
@@ -79,6 +68,15 @@ def connect_db():
     return conn
 
 
+tracker_data = {
+    "Monday":0,
+    "Tuesday":0,
+    "Wednesday":0,
+    "Thursday":0,
+    "Friday":0,
+    "Saturday":0,
+    "Sunday":0
+} #used for the tracker data
 
 #All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
 @app.route("/")
@@ -90,29 +88,34 @@ def index():
 def login():
     if request.method == "POST":
 
-        email = request.form.get('email')
-        password = request.form.get('password')
+        username = request.form.get("username")
+        password = request.form.get("password")
 
         connection = connect_db()
-
         cursor = connection.cursor()
 
-        cursor.execute("SELECT * FROM User WHERE Email = %s", (email,))
-
-        print(cursor)
-
+        # Fetch user by username
+        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
         result = cursor.fetchone()
-
         connection.close()
 
         if result is None:
-            flash("Email not registered!")
-        elif password != result['Password']:
+            flash("Username not found!")
+            return render_template("login.html.jinja")
+
+        if password != result["Password"]:
             flash("Incorrect password!")
-        else:
-            login_user(User(result))
-            return redirect("/Accountpage")
-           
+            return render_template("login.html.jinja")
+
+        # Mark user online
+        connection = connect_db()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE `User` SET is_online = 1 WHERE ID = %s", (result["ID"],))
+        connection.close()
+
+        login_user(User(result))
+        return redirect("/Accountpage")
+
     return render_template("login.html.jinja")
 
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -154,6 +157,7 @@ def register():
 
 #for the health data page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/healthdata", methods=["GET", "POST"])
+@login_required
 def health_data():
     if request.method == "POST":
 
@@ -235,6 +239,7 @@ def account_page():
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
+@login_required
 def friend_list():
     return render_template("friends.html.jinja")
 
@@ -260,7 +265,6 @@ def predict():
 @app.route('/tracker')
 @login_required
 def tracker():
-    user_id = current_user.id
 
     # initialize tracker dictionary
     tracker_data = {day:0 for day in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]}
@@ -273,7 +277,7 @@ def tracker():
             FROM water_log
             WHERE UserID = %s
             GROUP BY Day
-        """, (user_id,))
+        """, (current_user.id,))
         results = cursor.fetchall()
         for row in results:
             tracker_data[row['Day']] = row['total_volume'] / 20  # convert ml → drops
@@ -287,8 +291,11 @@ def tracker():
     return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
 
 
+@app.route("/camera")
+def camera():
+    return render_template("camera.html.jinja")
+
 @app.route('/capture', methods=['POST'])
-@login_required
 def capture():
     if "file" not in request.files:
         flash("No file uploaded")
@@ -314,7 +321,7 @@ def capture():
     cursor = connection.cursor()
     try:
         cursor.execute("""
-        INSERT INTO `Water Consumption` (UserID, Points, Oz, Timestamp, Image)
+        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
         VALUES (%s, %s, %s, NOW(), %s)
         """, (current_user.id, 0, volume_cups, filename))
         connection.commit()
@@ -339,7 +346,7 @@ def add_drink():
     cursor = connection.cursor()
     try:
         cursor.execute("""
-        INSERT INTO `Water Consumption` (UserID, Points, Oz, Timestamp, Image)
+        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
         VALUES (%s, %s, %s, NOW(), %s)
         """, (current_user.id, 0, volume_cups, None))
         connection.commit()
@@ -359,3 +366,275 @@ if __name__ == "__main__":
     predicted_ml, predicted_oz = predict_capacity(test_image)
 
     print(f"Predicted volume: {predicted_ml:.1f} mL / {predicted_oz:.2f} fl oz")
+
+
+# --- Utility: weighted reward picker ----------------------------------------
+def pick_weighted_rewards(all_rewards, count):
+    """
+    all_rewards: list of dicts with at least keys 'ID' and 'Weight'
+    count: number of picks
+    """
+    pool = []
+    for r in all_rewards:
+        weight = int(r.get("Weight", 1) or 1)
+        pool.extend([r] * max(1, weight))
+    if not pool:
+        return []
+    return [random.choice(pool) for _ in range(count)]
+
+
+
+# Wheel of drinks route
+@app.route("/wheelofdrinks")
+@login_required
+def wheelofdrinks():
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT COALESCE(SUM(Points), 0) AS total_points
+            FROM `Water Consumption`
+            WHERE UserID = %s
+        """, (current_user.id,))
+        result = cursor.fetchone()
+        points = (result or {}).get("total_points", 0) or 0
+
+        cursor.execute("SELECT * FROM Rewards")
+        rewards = cursor.fetchall() or []
+
+        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)
+        cursor.execute("""
+            SELECT ur.ID AS ur_id,
+                   ur.UserID,
+                   ur.RewardsID,
+                   r.ID   AS reward_id,
+                   r.Name,
+                   r.Image,
+                   r.Price,
+                   r.Recipe
+            FROM `UserRewards` ur
+            JOIN `Rewards` r ON ur.RewardsID = r.ID
+            WHERE ur.UserID = %s
+            ORDER BY ur.ID DESC
+        """, (current_user.id,))
+        user_rewards = cursor.fetchall() or []
+
+    except Exception:
+        app.logger.exception("Error in wheelofdrinks")
+        points = 0
+        rewards = []
+        user_rewards = []
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        conn.close()
+
+    return render_template(
+        "wheelofdrinks.html.jinja",
+        points=points,
+        rewards=rewards,
+        user_rewards=user_rewards
+    )
+
+
+# Gacha spin route
+@app.route("/gacha_spin", methods=["POST"])
+@login_required
+def gacha_spin():
+    data = request.get_json() or {}
+    try:
+        plays = int(data.get("plays", 1))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Invalid spin amount"}), 400
+
+    if plays == 1:
+        cost = 10
+    elif plays == 10:
+        cost = 50
+    else:
+        return jsonify({"success": False, "message": "Invalid spin amount"}), 400
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT COALESCE(SUM(Points), 0) AS total_points
+            FROM `Water Consumption`
+            WHERE UserID = %s
+        """, (current_user.id,))
+        points = (cursor.fetchone() or {}).get("total_points", 0) or 0
+
+        if points < cost:
+            return jsonify({"success": False, "message": "Not enough points"}), 400
+
+        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it
+        cursor.execute("""
+            INSERT INTO `Water Consumption` (UserID, Points, Oz)
+            VALUES (%s, %s, %s)
+        """, (current_user.id, -cost, 0))
+
+        cursor.execute("SELECT * FROM Rewards")
+        all_rewards = cursor.fetchall() or []
+
+        results = pick_weighted_rewards(all_rewards, plays)
+
+        for r in results:
+            cursor.execute("""
+                INSERT INTO `UserRewards` (UserID, RewardsID)
+                VALUES (%s, %s)
+            """, (current_user.id, r["ID"]))
+
+        # recompute remaining points
+        cursor.execute("""
+            SELECT COALESCE(SUM(Points), 0) AS total_points
+            FROM `Water Consumption`
+            WHERE UserID = %s
+        """, (current_user.id,))
+        remaining = (cursor.fetchone() or {}).get("total_points", 0) or 0
+
+        conn.commit()
+
+    except Exception:
+        traceback.print_exc()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return jsonify({"success": False, "message": "Server error during gacha spin"}), 500
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        conn.close()
+
+    return jsonify({
+        "success": True,
+        "rewards": [
+            {
+                "ID": r["ID"],
+                "Name": r.get("Name"),
+                "Image": r.get("Image"),
+                "Price": float(r["Price"]) if r.get("Price") is not None else None,
+                "Recipe": r.get("Recipe"),
+                "Weight": r.get("Weight")
+            } for r in results
+        ],
+        "remaining_points": remaining
+    })
+
+
+#for the results page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/reward/<int:reward_id>")
+def reward_detail(reward_id):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM Rewards
+        WHERE ID = %s
+    """, (reward_id,))
+    reward = cursor.fetchone()
+    conn.close()
+
+    if not reward:
+        abort(404)
+
+
+
+    # optional: map weight → rarity
+    weight = reward["Weight"]
+    if weight <= 1:
+        rarity = "Legendary"
+    elif weight <= 3:
+        rarity = "Epic"
+    elif weight <= 7:
+        rarity = "Rare"
+    else:
+        rarity = "Common"
+
+    return render_template("reward_detail.html.jinja",
+                           reward=reward,
+                           rarity=rarity)
+
+#for the catalog page where users can see the rewards they have earned and how many points they have.------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@app.route("/catalog")
+@login_required
+def catalog():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            Rewards.ID,
+            Rewards.Name,
+            Rewards.Image,
+            Rewards.Price,
+            Rewards.Recipe,
+            Rewards.Weight,
+            UserRewards.Timestamp
+        FROM UserRewards
+        JOIN Rewards 
+            ON Rewards.ID = UserRewards.RewardsID
+        WHERE UserRewards.UserID = %s
+        ORDER BY UserRewards.Timestamp DESC
+    """, (current_user.id,))
+
+    rewards = cursor.fetchall()
+    conn.close()
+
+    return render_template("catalog.html.jinja", rewards=rewards)
+
+@app.route('/addfriends' , methods=['GET', 'POST'])
+@login_required
+def add_friends():
+    
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" SELECT * FROM `User` """)
+     
+
+    if  request.method == "POST":
+      user_id2= request.form["user_id2"]
+     
+     
+      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
+      return redirect('/success')
+
+    results = cursor.fetchall()
+    connection.close()
+    
+
+
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
