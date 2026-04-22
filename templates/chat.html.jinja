@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+{% include "components/navbar.html.jinja"%}
+
+<body>
+
+<div class="flex items-center min-h-screen bg-white">
+ <div class="container mx-auto">
+<div class="max-w-md mx-auto my-10">
+
+
+<h2>Chat</h2>
+
+<div style="height:300px; overflow-y:scroll; border:1px solid #ccc;">
+  {% for msg in messages %}
+    <p>
+      {% if msg[0] == current_user_id %}
+        <strong>You:</strong>
+      {% else %}
+        <strong>User {{ other_user_id }}:</strong>
+      {% endif %}
+      {{ msg[2] }}
+    </p>
+  {% endfor %}
+</div>
+
+<form method="POST" action="{{ url_for('send_message', user_id=other_user_id) }}">
+  <input type="text" name="message" placeholder="Type message..." required>
+  <button type="submit">Send</button>
+</form>
+
