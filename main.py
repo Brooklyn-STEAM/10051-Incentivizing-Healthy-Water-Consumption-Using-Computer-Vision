@@ -20,7 +20,6 @@ import traceback
 
 import random
 
-
 config = Dynaconf(settings_file = ["settings.toml"])
 
 app = Flask(__name__)
