@@ -42,6 +42,8 @@ class User(UserMixin):
     def get_id(self):
         return str(self.id)
 
+
+
 @login_manager.user_loader
 def load_user(user_id):
     connection = connect_db()
@@ -54,7 +56,6 @@ def load_user(user_id):
         return None
 
     return User(result)
-
 
     
 
@@ -106,8 +107,9 @@ def login():
             return render_template("login.html.jinja")
 
         if password != result["Password"]:
-            flash("Incorrect password!")
+            flash("Username not found!")
             return render_template("login.html.jinja")
+
 
         # Mark user online
         connection = connect_db()
@@ -144,9 +146,9 @@ def register():
             try: 
                  # Insert new user
                 cursor.execute("""
-                INSERT INTO User (Name, Email, Password, Username)
-                VALUES (%s, %s, %s, %s)
-                    """, (name, email, password, username))
+                INSERT INTO User (Name, Email, Password, Username, is_online)
+                VALUES (%s, %s, %s, %s, %s)
+                """, (name, email, password, username, 0))
                 connection.close()
 
             except pymysql.err.IntegrityError:
@@ -161,15 +163,22 @@ def register():
 @app.route("/healthdata", methods=["GET", "POST"])
 @login_required
 def health_data():
+    connection = connect_db()
+    cursor = connection.cursor()
+    # 🔍 Check if user already has data
+    cursor.execute("SELECT * FROM `Health Data` WHERE UserID = %s", (current_user.id,))
+    existing_data = cursor.fetchone()
+
     if request.method == "POST":
 
         # ✅ GET FORM DATA
         weight = float(request.form["Weight"])
         sex = request.form["Sex"]
-        active = request.form["Active level"]
+        active = request.form["Active"]
         exercise = request.form["Daily Excersize"]
         climate = request.form["Climate"]
-        health = request.form["Health"]
+        health_list = request.form.getlist("Health")   # gets ALL checked boxes
+        health = ",".join(health_list)                # store as "kidney,heart"
 
         # ✅ AGE FROM BIRTHDATE
         birthday_str = request.form["Age"]
@@ -228,9 +237,39 @@ def health_data():
         # ✅ STORE RESULT
         session["cups"] = cups
 
-        return redirect("/tracker")
+        if existing_data:
+            # ✏️ UPDATE
+            cursor.execute("""
+                UPDATE `Health Data`
+                SET Cups=%s, WaterOz=%s, Weight=%s, Age=%s, Sex=%s,
+                    Active=%s, `Daily Excersize`=%s,
+                    `Local Weather`=%s, `Health Considerations`=%s
+                WHERE UserID=%s
+            """, (
+                cups, water_oz, weight, age, sex,
+                active, exercise, climate, health,
+                current_user.id
+            ))
+        else:
+            # ➕ INSERT
+            cursor.execute("""
+                INSERT INTO `Health Data`
+                (UserID, Cups, WaterOz, Weight, Age, Sex, Active,
+                 `Daily Excersize`, `Local Weather`, `Health Considerations`)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                current_user.id, cups, water_oz, weight, age, sex,
+                active, exercise, climate, health
+            ))  
 
-    return render_template("healthdata.html.jinja")
+        connection.commit()
+        cursor.close()
+        connection.close()
+
+        return redirect("/Accountpage")
+    cursor.close()
+    connection.close() 
+    return render_template("healthdata.html.jinja", data=existing_data)
      
 
 
@@ -278,7 +317,57 @@ def friends_list():
     """,     (current_user.id,))
      results = cursor.fetchall()
      connection.close()
-     return render_template("friends.html.jinja",friends=results)
+
+
+     return render_template('friends.html.jinja', friends=results)
+
+@app.route('/addfriends' , methods=['GET', 'POST'])
+@login_required
+def add_friends():
+
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute(""" SELECT * FROM User """)
+
+
+    if  request.method == "POST":
+      user_id2= request.form["user_id2"]
+
+
+      cursor.execute("INSERT INTO friendships(user_id1,user_id2)VALUES(%s,%s)",(current_user.id,user_id2))
+      return redirect('/success')
+
+    results = cursor.fetchall()
+    connection.close()
+
+
+
+    return render_template("addfriends.html.jinja",User=results)
+
+@app.route('/success')
+def success():
+    return "Friend added successfully!"
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+@login_required
+def remove_friend(friend_id):
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM `friendships`
+        WHERE `user_id1` = %s AND `user_id2` = %s
+    """, (current_user.id, friend_id))
+
+    connection.commit()
+    connection.close()
+
+    return redirect('/friends')
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
 
 
 
@@ -298,34 +387,76 @@ def predict():
         "predicted_volume_oz": predicted_oz
     })
 
-#for the tracker page(still need to connect to the user input from the photo they take------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/tracker')
 @login_required
 def tracker():
-
-    # initialize tracker dictionary
-    tracker_data = {day:0 for day in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]}
-
-    connection = connect_db()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
     try:
-        cursor.execute("""
-            SELECT Day, SUM(Volume) AS total_volume
-            FROM water_log
-            WHERE UserID = %s
-            GROUP BY Day
-        """, (current_user.id,))
-        results = cursor.fetchall()
-        for row in results:
-            tracker_data[row['Day']] = row['total_volume'] / 20  # convert ml → drops
-    except Exception as e:
-        print("Error fetching tracker data:", e)
-    finally:
-        cursor.close()
-        connection.close()
+        conn = connect_db()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-    days = list(tracker_data.keys())
-    return render_template("tracker.html.jinja", days=days, tracker_data=tracker_data)
+        cursor.execute("""
+            SELECT WaterOz 
+            FROM `Health Data`
+            WHERE UserID = %s
+        """, (current_user.id,))
+
+        daily_goal = int((cursor.fetchone() or {}).get("Cups", 0))
+
+
+        cursor.execute("""
+            SELECT COALESCE(SUM(Cups), 0) AS drank_today
+            FROM `Water Consumption`
+            WHERE UserID = %s AND DATE(Timestamp) = CURDATE()
+        """, (current_user.id,))
+        result = cursor.fetchone()
+        cups_drank = (result or {}).get("drank_today", 0)
+
+        cups_left = max(daily_goal - cups_drank, 0)
+
+        cursor.execute("""
+            SELECT 
+                DAYNAME(Timestamp) AS day,
+                COALESCE(SUM(Cups), 0) AS total_cups
+            FROM `Water Consumption`
+            WHERE UserID = %s
+            GROUP BY DAYNAME(Timestamp)
+        """, (current_user.id,))
+        weekly_rows = cursor.fetchall()
+
+        tracker_data = {
+            "Monday": 0, "Tuesday": 0, "Wednesday": 0,
+            "Thursday": 0, "Friday": 0, "Saturday": 0, "Sunday": 0
+        }
+
+        for row in weekly_rows:
+            tracker_data[row["day"]] = row["total_cups"]
+
+        days = list(tracker_data.keys())
+
+        # ⭐ ADD THIS
+        cursor.execute("""
+            SELECT COALESCE(SUM(Points), 0) AS total_points
+            FROM `Water Consumption`
+            WHERE UserID = %s
+        """, (current_user.id,))
+
+        points_result = cursor.fetchone()
+        total_points = (points_result or {}).get("total_points", 0)
+
+        return render_template(
+            "tracker.html.jinja",
+            days=days,
+            total_points=total_points,   # ⭐ THIS is what your HTML needs
+            tracker_data=tracker_data,
+            daily_goal=daily_goal,
+            cups_drank=cups_drank,
+            cups_left=cups_left
+        )
+
+    except Exception as e:
+        print("ERROR IN TRACKER:", e)
+        return str(e)
+
 
 
 @app.route("/camera")
@@ -351,8 +482,7 @@ def capture():
     # Predict container capacity in mL
     capacity_ml, capacity_oz = predict_capacity(filepath)
     # Convert to cups
-    volume_cups = capacity_ml / 240 
-
+    volume_cups = round(capacity_ml / 240)
     # Save prediction to DB
     connection = connect_db()
     cursor = connection.cursor()
@@ -375,24 +505,64 @@ def add_drink():
     ounces = request.form.get("ounces", type=float)
 
     if not ounces or ounces <= 0:
-        return {"success": False, "message": "Invalid amount"}
+        flash("Invalid amount")
+        return redirect("/tracker")
 
     volume_cups = ounces / 8
 
-    connection = connect_db()
-    cursor = connection.cursor()
+    conn = connect_db()
+    cursor = conn.cursor()
+
     try:
+        # 1. Insert the drink------------this stays the same tho----------------------------------------------------------------
         cursor.execute("""
-        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
-        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
-        VALUES (%s, %s, %s, NOW(), %s)
+            INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
+            VALUES (%s, %s, %s, NOW(), %s)
         """, (current_user.id, 0, volume_cups, None))
-        connection.commit()
+
+        # 2. Recalculate how much the user drank today-- more math ----------------------------------------------------
+        cursor.execute("""
+            SELECT COALESCE(SUM(Cups), 0) AS drank_today
+            FROM `Water Consumption`
+            WHERE UserID = %s AND DATE(Timestamp) = CURDATE()
+        """, (current_user.id,))
+        result = cursor.fetchone()
+        cups_drank = (result or {}).get("drank_today", 0)
+
+        # 3. Get daily goal we got this part done------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT WaterOz 
+            FROM `Health Data`
+            WHERE UserID = %s
+        """, (current_user.id,))
+
+        daily_goal = int((cursor.fetchone() or {}).get("Cups", 0))
+        # 4. If user reached or exceeded goal, award 15 points (only once per day)-----------------------------------------------------------------------------
+        if cups_drank >= daily_goal:
+            # Check if reward already given today i think? ------------------------------------------------------------------------------------------------------------
+            cursor.execute("""
+                SELECT COUNT(*) AS reward_count
+                FROM `Water Consumption`
+                WHERE UserID = %s AND Points = 15 AND DATE(Timestamp) = CURDATE()
+            """, (current_user.id,))
+            reward_row = cursor.fetchone()
+            already_rewarded = reward_row["reward_count"] > 0
+
+            if not already_rewarded:
+                cursor.execute("""
+                    INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
+                    VALUES (%s, %s, %s, NOW(), %s)
+                """, (current_user.id, 15, 0, None))
+
+                flash("🎉 Daily goal reached! You earned +15 points!")
+
+        conn.commit()
+
     finally:
         cursor.close()
-        connection.close()
+        conn.close()
 
-    flash(f"Drink logged: {ounces} oz ({volume_cups:.2f} cups)")   
+    flash(f"Drink logged: {ounces} oz ({volume_cups:.2f} cups)")
     return redirect("/tracker")
 
 # ----------------------------
@@ -625,54 +795,5 @@ def catalog():
     conn.close()
 
     return render_template("catalog.html.jinja", rewards=rewards)
-
-@app.route('/addfriends' , methods=['GET', 'POST'])
-@login_required
-def add_friends():
-    
-    connection = connect_db()
-    cursor = connection.cursor()
-    cursor.execute(""" SELECT * FROM `User` """)
-     
-
-    if  request.method == "POST":
-      user_id2= request.form["user_id2"]
-     
-     
-      cursor.execute("INSERT INTO `friendships`(`user_id1`,`user_id2`)VALUES(%s,%s)",(current_user.id,user_id2))
-      return redirect('/success')
-
-    results = cursor.fetchall()
-    connection.close()
-    
-
-
-    return render_template("addfriends.html.jinja",User=results)
-
-@app.route('/success')
-def success():
-    return "Friend added successfully!"
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
-@login_required
-def remove_friend(friend_id):
-    connection = connect_db()
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        DELETE FROM `friendships`
-        WHERE `user_id1` = %s AND `user_id2` = %s
-    """, (current_user.id, friend_id))
-
-    connection.commit()
-    connection.close()
-
-    return redirect('/friends')
-
-if __name__ == "__main__":
-    app.run(debug=True)
 
 

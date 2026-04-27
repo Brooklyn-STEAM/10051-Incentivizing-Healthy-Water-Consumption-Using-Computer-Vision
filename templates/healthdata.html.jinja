@@ -13,7 +13,7 @@
     <div class="text-red-600 text-center mt-2">{{ message }}</div>
   {% endfor %}
 
-<form method="POST" action="{{ url_for('healthdata') }}" class="flex flex-col gap-4 max-w-md mx-auto p-6 bg-white shadow-lg rounded-xl mt-6">
+<form method="POST" action="{{ url_for('health_data') }}" class="flex flex-col gap-4 max-w-md mx-auto p-6 bg-white shadow-lg rounded-xl mt-6">
     <h1 class="text-2xl font-bold text-center text-blue-600">Let's create an Account Water Goal</h1>
 
 
@@ -34,6 +34,7 @@
       id="weight"
       required
       placeholder="Enter your weight in lbs"
+      value="{{ data.Weight if data else '' }}"
       class="border px-3 py-2 rounded"
     />
 
@@ -41,17 +42,20 @@
     <label class="font-medium">Sex</label>
     <div class="flex gap-4">
       <label>
-        <input type="radio" name="Sex" value="female" required>
+        <input type="radio" name="Sex" value="female"
+          {% if data and data.Sex == "female" %}checked{% endif %}>
         Female
       </label>
 
       <label>
-        <input type="radio" name="Sex" value="male">
+        <input type="radio" name="Sex" value="male"
+          {% if data and data.Sex == "male" %}checked{% endif %}>
         Male
       </label>
 
       <label>
-        <input type="radio" name="Sex" value="prefer_not">
+        <input type="radio" name="Sex" value="prefer_not"
+          {% if data and data.Sex == "prefer_not" %}checked{% endif %}>
         Prefer not to say
       </label>
     </div>
@@ -59,17 +63,20 @@
     <label class="font-medium">How active are you?</label>
     <div class="flex flex-col gap-1">
       <label>
-        <input type="radio" name="Active level" value="not_active" required>
+        <input type="radio" name="Active" value="not_active"
+          {% if data and data.Active == "not_active" %}checked{% endif %}>
         Not very active
       </label>
 
       <label>
-        <input type="radio" name="Active level" value="moderate">
+        <input type="radio" name="Active" value="moderate"
+          {% if data and data.Active == "moderate" %}checked{% endif %}>
         Moderately active
       </label>
 
       <label>
-        <input type="radio" name="Active level" value="very_active">
+        <input type="radio" name="Active" value="very_active"
+          {% if data and data.Active == "very_active" %}checked{% endif %}>
         Very active
       </label>
     </div>
@@ -78,22 +85,26 @@
     <label class="font-medium">How much do you exercise daily?</label>
     <div class="flex flex-col gap-1">
       <label>
-        <input type="radio" name="Daily Excersize" value="0_30" required>
+        <input type="radio" name="Daily Excersize" value="0_30"
+          {% if data and data["Daily Excersize"] == "0_30" %}checked{% endif %}>
         0–30 minutes
       </label>
 
       <label>
-        <input type="radio" name="Daily Excersize" value="30_60">
+        <input type="radio" name="Daily Excersize" value="30_60"
+          {% if data and data["Daily Excersize"] == "30_60" %}checked{% endif %}>
         30–60 minutes
       </label>
 
       <label>
-        <input type="radio" name="Daily Excersize" value="1_2">
+        <input type="radio" name="Daily Excersize" value="1_2"
+          {% if data and data["Daily Excersize"] == "1_2" %}checked{% endif %}>
         1–2 hours
       </label>
 
       <label>
-        <input type="radio" name="Daily Excersize" value="2_plus">
+        <input type="radio" name="Daily Excersize" value="2_plus"
+          {% if data and data["Daily Excersize"] == "2_plus" %}checked{% endif %}>
         2+ hours
       </label>
     </div>
@@ -102,42 +113,54 @@
     <label class="font-medium">What’s the usual weather like?</label>
     <div class="flex gap-4">
       <label>
-        <input type="radio" name="Climate" value="cold" required>
+        <input type="radio" name="Climate" value="cold"
+          {% if data and data["Local Weather"] == "cold" %}checked{% endif %}>
         Cold
       </label>
 
       <label>
-        <input type="radio" name="Climate" value="mild">
+        <input type="radio" name="Climate" value="mild"
+          {% if data and data["Local Weather"] == "mild" %}checked{% endif %}>
         Mild
       </label>
 
       <label>
-        <input type="radio" name="Climate" value="hot">
+        <input type="radio" name="Climate" value="hot"
+          {% if data and data["Local Weather"] == "hot" %}checked{% endif %}>
         Hot
       </label>
     </div>
 
-    <label class="font-medium">Health considerations (optional)</label>
+   <label class="font-medium">Health considerations (optional)</label>
+
+    {% set health_list = data["Health Considerations"].split(',') if data and data["Health Considerations"] else [] %}
+
     <div class="flex flex-col gap-1">
+
       <label>
-        <input type="checkbox" name="Health" value="kidney">
+        <input type="checkbox" name="Health" value="kidney"
+          {% if "kidney" in health_list %}checked{% endif %}>
         Kidney problems
       </label>
 
       <label>
-        <input type="checkbox" name="Health" value="heart">
+        <input type="checkbox" name="Health" value="heart"
+          {% if "heart" in health_list %}checked{% endif %}>
         Heart condition
       </label>
 
       <label>
-        <input type="checkbox" name="Health" value="sick">
+        <input type="checkbox" name="Health" value="sick"
+          {% if "sick" in health_list %}checked{% endif %}>
         Currently sick
       </label>
 
       <label>
-        <input type="checkbox" name="Health" value="none">
+        <input type="checkbox" name="Health" value="none"
+          {% if "none" in health_list %}checked{% endif %}>
         None of the above
       </label>
+
     </div>
 
     <p class="text-xs text-gray-500">

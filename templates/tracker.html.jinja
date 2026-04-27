@@ -40,6 +40,30 @@
       </div>
     </div>
 
+    <!-- ⭐ DAILY GOAL / DRANK TODAY / REMAINING ⭐ -->
+    <div class="text-center mb-10">
+      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm">
+        <p class="text-sky-700 font-semibold text-xl">
+          Daily Goal: <span class="font-bold">{{ daily_goal }}</span> cups
+        </p>
+        <p class="text-sky-700 font-semibold text-xl mt-1">
+          Drank Today: <span class="font-bold">{{ cups_drank }}</span> cups
+        </p>
+        <p class="text-sky-700 font-semibold text-xl mt-1">
+          Remaining: <span class="font-bold">{{ cups_left }}</span> cups
+        </p>
+      </div>
+    </div>
+
+    <!-- Points Display -->
+    <div class="text-center mb-10">
+      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm">
+        <span class="text-sky-700 font-semibold text-xl">Your Points:</span>
+        <span class="text-sky-600 font-bold text-2xl ml-2">{{ total_points }}</span>
+      </div>
+    </div>
+
+    <!-- WEEKLY DROPS -->
     {% for day in days %}
     <div class="flex items-center justify-between mb-6">
 
