@@ -1,5 +1,4 @@
 from flask import Flask, render_template, redirect, request, flash, abort, session, jsonify, url_for
-from flask import Flask, render_template, redirect, request, flash, abort, session, jsonify, url_for
 
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin # Import necessary functions and classes from the Flask-Login library for user authentication and session management
 
@@ -16,27 +15,18 @@ from dynaconf import Dynaconf # Import the Dynaconf library for configuration ma
 from datetime import datetime #helps get the date and time for the tracker page
 
 from ai_model import predict_capacity #for the ai to load and work
-from ai_model import predict_capacity #for the ai to load and work
 
-import traceback
-
-import random
 import traceback
 
 import random
 
 config = Dynaconf(settings_file = ["settings.toml"])
-config = Dynaconf(settings_file = ["settings.toml"])
 
-app = Flask(__name__)
-
-app.secret_key = config.secret_key
 app = Flask(__name__)
 
 app.secret_key = config.secret_key
 
 login_manager = LoginManager()
-login_manager.login_view = 'login'
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
@@ -49,14 +39,7 @@ class User(UserMixin):
     def get_id(self):
         return str(self.id)
 
-@login_manager.user_loader
-    def __init__(self, result):
-        self.name = result['Name']
-        self.email = result['Email']
-        self.id = result['ID']
 
-    def get_id(self):
-        return str(self.id)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -64,22 +47,12 @@ def load_user(user_id):
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM `User` WHERE `ID` = %s", (user_id,))
     result = cursor.fetchone()
-    cursor.execute("SELECT * FROM `User` WHERE `ID` = %s", (user_id,))
-    result = cursor.fetchone()
     connection.close()
 
     if result is None:
         return None
-    if result is None:
-        return None
 
     return User(result)
-
-
-    
-
-    return User(result)
-
 
     
 
@@ -104,15 +77,6 @@ tracker_data = {
     "Saturday":0,
     "Sunday":0
 } #used for the tracker data
-tracker_data = {
-    "Monday":0,
-    "Tuesday":0,
-    "Wednesday":0,
-    "Thursday":0,
-    "Friday":0,
-    "Saturday":0,
-    "Sunday":0
-} #used for the tracker data
 
 #All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
 @app.route("/")
@@ -126,14 +90,10 @@ def login():
 
         username = request.form.get("username")
         password = request.form.get("password")
-        username = request.form.get("username")
-        password = request.form.get("password")
 
         connection = connect_db()
         cursor = connection.cursor()
 
-        # Fetch user by username
-        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
         # Fetch user by username
         cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
         result = cursor.fetchone()
@@ -147,20 +107,6 @@ def login():
             flash("Username not found!")
             return render_template("login.html.jinja")
 
-        if password != result["Password"]:
-            flash("Incorrect password!")
-            return render_template("login.html.jinja")
-
-        # Mark user online
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("UPDATE `User` SET is_online = 1 WHERE ID = %s", (result["ID"],))
-        connection.close()
-
-        login_user(User(result))
-        return redirect("/Accountpage")
-
-            return render_template("login.html.jinja")
 
         # Mark user online
         connection = connect_db()
@@ -212,7 +158,6 @@ def register():
 
 #for the health data page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/healthdata", methods=["GET", "POST"])
-@login_required
 @login_required
 def health_data():
     connection = connect_db()
@@ -422,7 +367,14 @@ def tracker():
         conn = connect_db()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-        daily_goal = session.get("cups", 0)
+        cursor.execute("""
+            SELECT WaterOz 
+            FROM `Health Data`
+            WHERE UserID = %s
+        """, (current_user.id,))
+
+        daily_goal = int((cursor.fetchone() or {}).get("Cups", 0))
+
 
         cursor.execute("""
             SELECT COALESCE(SUM(Cups), 0) AS drank_today
@@ -510,7 +462,6 @@ def capture():
     try:
         cursor.execute("""
         INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
-        INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
         VALUES (%s, %s, %s, NOW(), %s)
         """, (current_user.id, 0, volume_cups, filename))
         connection.commit()
@@ -552,8 +503,13 @@ def add_drink():
         cups_drank = (result or {}).get("drank_today", 0)
 
         # 3. Get daily goal we got this part done------------------------------------------------------------------------------------------------------------
-        daily_goal = session.get("cups", 0)
+        cursor.execute("""
+            SELECT WaterOz 
+            FROM `Health Data`
+            WHERE UserID = %s
+        """, (current_user.id,))
 
+        daily_goal = int((cursor.fetchone() or {}).get("Cups", 0))
         # 4. If user reached or exceeded goal, award 15 points (only once per day)-----------------------------------------------------------------------------
         if cups_drank >= daily_goal:
             # Check if reward already given today i think? ------------------------------------------------------------------------------------------------------------
