@@ -22,12 +22,13 @@ import traceback
 
 import random
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
 config = Dynaconf(settings_file = ["settings.toml"])
 
 app = Flask(__name__)
 
 app.secret_key = config.secret_key
-
 login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
@@ -57,7 +58,7 @@ def load_user(user_id):
 
     return User(result)
 
-    
+
 
 def connect_db():
     conn = pymysql.connect(
@@ -71,20 +72,38 @@ def connect_db():
     return conn
 
 
-tracker_data = {
-    "Monday":0,
-    "Tuesday":0,
-    "Wednesday":0,
-    "Thursday":0,
-    "Friday":0,
-    "Saturday":0,
-    "Sunday":0
-} #used for the tracker data
 
 #All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
 @app.route("/")
 def index():
     return render_template("homepage.html.jinja")
+
+# explicit logout endpoint (guarantees url_for('logout') works)
+@app.route("/logout", endpoint="logout", methods=["GET"])
+@login_required
+def logout_view():
+    conn = None
+    cur = None
+    try:
+        conn = connect_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE `User` SET is_online = 0 WHERE ID = %s", (current_user.id,))
+        conn.commit()
+    except Exception:
+        app.logger.exception("Error updating is_online on logout")
+    finally:
+        try:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+    logout_user()
+    return redirect(url_for("login"))
+
+
 
 #for login page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
@@ -98,7 +117,7 @@ def login():
         cursor = connection.cursor()
 
         # Fetch user by username
-        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
+        cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
         result = cursor.fetchone()
         connection.close()
 
@@ -114,13 +133,14 @@ def login():
         # Mark user online
         connection = connect_db()
         cursor = connection.cursor()
-        cursor.execute("UPDATE `User` SET is_online = 1 WHERE ID = %s", (result["ID"],))
+        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (result["ID"],))
         connection.close()
 
         login_user(User(result))
         return redirect("/Accountpage")
 
     return render_template("login.html.jinja")
+    
 
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
@@ -132,7 +152,7 @@ def register():
         email = request.form["email"]
         password = request.form["password"]
         confirm_password = request.form["confirm_password"]
-        
+
         if password != confirm_password:
             flash("Passwords do not match!")
             return render_template("register.html.jinja")
@@ -140,24 +160,38 @@ def register():
         elif len(password) < 8:
             flash("Password must be at least 8 characters long")
             return render_template("register.html.jinja")
-        else:
-            connection = connect_db()
-            cursor = connection.cursor()
-            try: 
-                 # Insert new user
-                cursor.execute("""
+
+        connection = connect_db()
+        cursor = connection.cursor()
+
+        try:
+            hashed_password = generate_password_hash(password)
+
+            cursor.execute("""
                 INSERT INTO User (Name, Email, Password, Username, is_online)
                 VALUES (%s, %s, %s, %s, %s)
-                """, (name, email, password, username, 0))
-                connection.close()
+            """, (name, email, hashed_password, username, 0))
 
-            except pymysql.err.IntegrityError:
-                        flash("Email already registered!")
-                        connection.close()
-                        return render_template("register.html.jinja")
+            connection.commit()
+
+            # GET NEW USER
+            cursor.execute("SELECT * FROM User WHERE Email = %s", (email,))
+            new_user = cursor.fetchone()
+
+            connection.close()
+
+            # LOGIN USER
+            login_user(User(new_user))
+
             return redirect("/healthdata")
-        
+
+        except pymysql.err.IntegrityError:
+            flash("Email already registered!")
+            connection.close()
+            return render_template("register.html.jinja")
+
     return render_template("register.html.jinja")
+
 
 #for the health data page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/healthdata", methods=["GET", "POST"])
@@ -270,36 +304,71 @@ def health_data():
     cursor.close()
     connection.close() 
     return render_template("healthdata.html.jinja", data=existing_data)
-     
 
 
 #for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Accountpage",methods=["GET", "POST"])
+@app.route("/Accountpage", methods=["GET", "POST"])
 @login_required
 def account_page():
-    if request.method == "POST":
-        file = request.files["picture"]
-        if file:
-            filename = secure_filename(file.filename)
+    try:
+        if request.method == "POST":
+            file = request.files.get("picture")
+            if file and file.filename:
+                filename = secure_filename(file.filename)
 
-            # save file to static folder
-            file.save(os.path.join("static/profile_pics", filename))
+                # Save into app static/profile_pics reliably
+                save_dir = os.path.join(app.root_path, "static", "profile_pics")
+                os.makedirs(save_dir, exist_ok=True)
+                save_path = os.path.join(save_dir, filename)
+                file.save(save_path)
 
-            # store filename (example: simple user object)
-            current_user.profile_image = filename
-            connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute(""" UPDATE User
-                      SET profile_image =%s
-                      WHERE id = %s""", (filename, current_user.id))
+                conn = None
+                cur = None
+                try:
+                    conn = connect_db()
+                    cur = conn.cursor()
+                    # Use the same column names/casing your DB uses; ID is used here
+                    cur.execute("""
+                        UPDATE `User`
+                        SET profile_image = %s
+                        WHERE ID = %s
+                    """, (filename, current_user.id))
+                    conn.commit()
+                except Exception:
+                    app.logger.exception("Error updating profile_image in DB")
+                    flash("Failed to save profile image. Try again.")
+                    # remove file if DB update failed
+                    try:
+                        os.remove(save_path)
+                    except Exception:
+                        pass
+                finally:
+                    try:
+                        if cur:
+                            cur.close()
+                        if conn:
+                            conn.close()
+                    except Exception:
+                        pass
 
-        connection.commit()
+                return redirect(url_for("account_page"))
 
-                
-    
-    return render_template("Accountpage.html.jinja",User=current_user.id)
-
-
+        return render_template(
+            "Accountpage.html.jinja",
+            User=current_user,
+            daily_goal=session.get("cups", 0)
+        )   
+    except Exception as e:
+        # Log full traceback and show a simple error page for development
+        app.logger.exception("Unhandled error in account_page")
+        import pprint
+        pprint.pprint(sorted([(r.endpoint, str(r)) for r in app.url_map.iter_rules()]))
+        return (
+            "<h1>Internal Server Error</h1>"
+            f"<pre>{str(e)}</pre>"
+            "<p>Check server logs for full traceback.</p>",
+            500,
+        )
 
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -364,8 +433,6 @@ def remove_friend(friend_id):
 
     return redirect('/friends')
 
-if __name__ == "__main__":
-    app.run(debug=True)
 
 
 
@@ -395,32 +462,42 @@ def tracker():
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
         cursor.execute("""
-            SELECT WaterOz 
+            SELECT Cups 
             FROM `Health Data`
             WHERE UserID = %s
         """, (current_user.id,))
 
-        daily_goal = int((cursor.fetchone() or {}).get("Cups", 0))
+        result = cursor.fetchone()
+        daily_goal = (result or {}).get("Cups") or 0
 
-
+        # 2. Cups drank today
         cursor.execute("""
             SELECT COALESCE(SUM(Cups), 0) AS drank_today
             FROM `Water Consumption`
             WHERE UserID = %s AND DATE(Timestamp) = CURDATE()
         """, (current_user.id,))
+
         result = cursor.fetchone()
         cups_drank = (result or {}).get("drank_today", 0)
 
-        cups_left = max(daily_goal - cups_drank, 0)
+        # 3. Remaining cups
+        daily_goal = int(daily_goal)
+        cups_drank = int(cups_drank)
 
+        cups_left = max(daily_goal - cups_drank, 0)
+        # 4. Weekly data (FIXED)
         cursor.execute("""
             SELECT 
                 DAYNAME(Timestamp) AS day,
+                DAYOFWEEK(Timestamp) AS day_num,
                 COALESCE(SUM(Cups), 0) AS total_cups
             FROM `Water Consumption`
             WHERE UserID = %s
-            GROUP BY DAYNAME(Timestamp)
+            AND YEARWEEK(Timestamp, 1) = YEARWEEK(CURDATE(), 1)
+            GROUP BY day, day_num
+            ORDER BY day_num
         """, (current_user.id,))
+
         weekly_rows = cursor.fetchall()
 
         tracker_data = {
@@ -428,12 +505,14 @@ def tracker():
             "Thursday": 0, "Friday": 0, "Saturday": 0, "Sunday": 0
         }
 
+        # NOTE: row["day"] is a DATE, not weekday name
         for row in weekly_rows:
-            tracker_data[row["day"]] = row["total_cups"]
+            day_name = row["day"]
+            tracker_data[day_name] = row["total_cups"]
 
         days = list(tracker_data.keys())
 
-        # ⭐ ADD THIS
+        # 5. Points
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`
@@ -446,7 +525,7 @@ def tracker():
         return render_template(
             "tracker.html.jinja",
             days=days,
-            total_points=total_points,   # ⭐ THIS is what your HTML needs
+            total_points=total_points,
             tracker_data=tracker_data,
             daily_goal=daily_goal,
             cups_drank=cups_drank,
@@ -508,7 +587,7 @@ def add_drink():
         flash("Invalid amount")
         return redirect("/tracker")
 
-    volume_cups = ounces / 8
+    volume_cups = float(ounces) / 8
 
     conn = connect_db()
     cursor = conn.cursor()
@@ -531,12 +610,13 @@ def add_drink():
 
         # 3. Get daily goal we got this part done------------------------------------------------------------------------------------------------------------
         cursor.execute("""
-            SELECT WaterOz 
+            SELECT Cups
             FROM `Health Data`
             WHERE UserID = %s
         """, (current_user.id,))
 
-        daily_goal = int((cursor.fetchone() or {}).get("Cups", 0))
+        goal_row = cursor.fetchone()
+        daily_goal = goal_row["Cups"] if goal_row else 0
         # 4. If user reached or exceeded goal, award 15 points (only once per day)-----------------------------------------------------------------------------
         if cups_drank >= daily_goal:
             # Check if reward already given today i think? ------------------------------------------------------------------------------------------------------------
@@ -568,7 +648,7 @@ def add_drink():
 # ----------------------------
 # TESTING PREDICTION
 # ----------------------------
-if __name__ == "__main__":
+
     test_image = "static/user_uploads/drink_1774962039.119192.jpg"
 
     predicted_ml, predicted_oz = predict_capacity(test_image)
@@ -679,9 +759,9 @@ def gacha_spin():
 
         # Deduct points; include Oz to satisfy NOT NULL if your schema requires it
         cursor.execute("""
-            INSERT INTO `Water Consumption` (UserID, Points, Oz)
-            VALUES (%s, %s, %s)
-        """, (current_user.id, -cost, 0))
+            INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
+            VALUES (%s, %s, %s, NOW(), %s)
+        """, (current_user.id, -cost, 0, None))
 
         cursor.execute("SELECT * FROM Rewards")
         all_rewards = cursor.fetchall() or []
@@ -796,4 +876,97 @@ def catalog():
 
     return render_template("catalog.html.jinja", rewards=rewards)
 
+@app.route("/map")
+def map_page():
 
+    location_id = request.args.get("location_id")
+    target_location = None
+
+    mapbox_token = config.MAPBOX_TOKEN  # ✅ ADD THIS HERE
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT ID, Name, Address, Latitude, Longitude
+        FROM `Water Fountains`
+        WHERE Latitude IS NOT NULL
+        AND Longitude IS NOT NULL
+    """)
+
+    locations_raw = cursor.fetchall()
+
+    water_locations = []
+
+    for location in locations_raw:
+        water_locations.append({
+            "id": location["ID"],
+            "name": location["Name"],
+            "address": location["Address"],
+            "lat": float(location["Latitude"]),
+            "lng": float(location["Longitude"])
+        })
+
+    if location_id:
+        cursor.execute("""
+            SELECT ID, Name, Address, Latitude, Longitude
+            FROM `Water Fountains`
+            WHERE ID = %s
+        """, (location_id,))
+
+        location = cursor.fetchone()
+
+        if location:
+            target_location = {
+                "id": location["ID"],
+                "name": location["Name"],
+                "address": location["Address"],
+                "lat": float(location["Latitude"]),
+                "lng": float(location["Longitude"])
+            }
+
+    connection.close()
+
+    return render_template(
+        "map.html.jinja",
+        water_locations=water_locations,
+        target_location=target_location,
+        MAPBOX_TOKEN=mapbox_token   # ✅ THIS IS NOW SAFE
+    )
+
+
+@app.route("/get-water-locations")
+def get_water_locations():
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            ID,
+            Name,
+            Address,
+            Latitude,
+            Longitude
+        FROM `Water Fountains`
+        WHERE Latitude IS NOT NULL
+        AND Longitude IS NOT NULL
+    """)
+
+    locations = cursor.fetchall()
+
+    connection.close()
+
+    results = []
+
+    for location in locations:
+
+        results.append({
+            "id": location["ID"],
+            "name": location["Name"],
+            "address": location["Address"],
+            "lat": float(location["Latitude"]),
+            "lng": float(location["Longitude"])
+        })
+
+    return jsonify(results)

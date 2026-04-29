@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Fountain Map</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+#map {
+    height: 100vh;
+    width: calc(100% - 16rem);
+    margin-left: 16rem;
+}
+
+@media (max-width: 768px) {
+    #map {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 12px;
+}
+</style>
+</head>
+
+<body class="bg-gray-100">
+
+{% include "components/navbar.html.jinja" %}
+
+<div id="map"></div>
+
+<!-- DIRECTIONS PANEL -->
+<div id="directions-panel"
+     class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl z-[9999] hidden overflow-y-auto">
+
+    <div class="p-4 border-b font-bold text-blue-600 flex justify-between">
+        🧭 Directions
+        <button onclick="document.getElementById('directions-panel').classList.add('hidden')">✖</button>
+    </div>
+
+    <div id="directions-list" class="p-4 text-sm space-y-3"></div>
+</div>
+
+<!-- START MODAL -->
+<div id="start-modal"
+     class="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30">
+
+    <div class="bg-white p-5 rounded-xl shadow-lg w-80">
+        <div class="font-bold text-blue-600 mb-3">
+            📍 Set Start Location
+        </div>
+
+        <input id="start-location"
+               placeholder="Enter start location"
+               class="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400">
+
+        <button id="set-start"
+                class="bg-blue-600 hover:bg-blue-700 text-white w-full p-2 rounded">
+            Set Start
+        </button>
+    </div>
+</div>
+
+<!-- MINI BUTTON -->
+<div id="start-mini" class="hidden fixed bottom-5 right-5 z-[9999]">
+    <button id="reopen-start"
+            class="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-xl">
+        📍
+    </button>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const MAPBOX_TOKEN = "{{ MAPBOX_TOKEN }}";
+
+    if (!MAPBOX_TOKEN) {
+        console.error("MAPBOX TOKEN IS MISSING");
+        alert("Mapbox token missing - check Flask config");
+    }
+
+    const map = L.map('map').setView([40.7128, -74.0060], 12);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap & CARTO',
+        maxZoom: 20
+    }).addTo(map);
+
+    const fountainIcon = L.icon({
+        iconUrl: "/static/water-bottle.png",
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+    });
+
+    let markers = [];
+    let startCoords = null;
+    let routeLayer = null;
+    let userMarker = null;
+
+    const startModal = document.getElementById("start-modal");
+    const startMini = document.getElementById("start-mini");
+    const reopenBtn = document.getElementById("reopen-start");
+
+    function loadFountains() {
+        fetch("/get-water-locations")
+        .then(res => res.json())
+        .then(data => {
+
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            data.forEach(f => {
+                const marker = L.marker([f.lat, f.lng], { icon: fountainIcon }).addTo(map);
+
+                marker.bindPopup(`
+                    <b>💧 ${f.name}</b><br>
+                    ${f.address}<br><br>
+
+                    <button onclick="routeTo(${f.lat}, ${f.lng}, 'walking')"
+                        class="bg-blue-500 text-white px-2 py-1 rounded w-full mb-1">🚶 Walk</button>
+
+                    <button onclick="routeTo(${f.lat}, ${f.lng}, 'cycling')"
+                        class="bg-blue-500 text-white px-2 py-1 rounded w-full mb-1">🚲 Bike</button>
+
+                    <button onclick="routeTo(${f.lat}, ${f.lng}, 'driving')"
+                        class="bg-blue-500 text-white px-2 py-1 rounded w-full">🚗 Drive</button>
+                `);
+
+                markers.push(marker);
+            });
+        });
+    }
+
+    loadFountains();
+
+    document.getElementById("set-start").onclick = () => {
+        const address = document.getElementById("start-location").value;
+        if (!address) return alert("Enter location");
+
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data.length) return alert("Not found");
+
+            startCoords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+
+            if (userMarker) map.removeLayer(userMarker);
+
+            userMarker = L.marker(startCoords)
+                .addTo(map)
+                .bindPopup("Start")
+                .openPopup();
+
+            map.setView(startCoords, 14);
+
+            startModal.classList.add("hidden");
+            startMini.classList.remove("hidden");
+        });
+    };
+
+    reopenBtn.onclick = () => {
+        startModal.classList.remove("hidden");
+    };
+
+    window.routeTo = function(lat, lng, mode) {
+
+        if (!startCoords) return alert("Set start first");
+
+        const panel = document.getElementById("directions-panel");
+        const container = document.getElementById("directions-list");
+
+        panel.classList.remove("hidden");
+        container.innerHTML = `<div class="p-2 bg-blue-50 text-blue-700">Loading route...</div>`;
+
+        const profile =
+            mode === "walking" ? "mapbox/walking" :
+            mode === "cycling" ? "mapbox/cycling" :
+            "mapbox/driving";
+
+        const url =
+            `https://api.mapbox.com/directions/v5/${profile}/` +
+            `${startCoords[1]},${startCoords[0]};${lng},${lat}` +
+            `?geometries=geojson&steps=true&overview=full&access_token=${MAPBOX_TOKEN}`;
+
+        console.log("START:", startCoords);
+        console.log("DEST:", lat, lng);
+        console.log("URL:", url);
+
+        fetch(url)
+        .then(async (res) => {
+            const data = await res.json();
+
+            console.log("STATUS:", res.status);
+            console.log("MAPBOX RESPONSE:", data);
+
+            if (!res.ok) {
+                throw new Error(data.message || "Mapbox error");
+            }
+
+            return data;
+        })
+        .then(data => {
+
+            if (!data.routes || data.routes.length === 0) {
+                container.innerHTML = "<div class='text-red-600'>No route found</div>";
+                return;
+            }
+
+            const route = data.routes[0];
+            const coords = route.geometry.coordinates;
+
+            if (routeLayer) map.removeLayer(routeLayer);
+
+            routeLayer = L.polyline(
+                coords.map(c => [c[1], c[0]]),
+                { color: "#1d4ed8", weight: 5 }
+            ).addTo(map);
+
+            map.fitBounds(routeLayer.getBounds());
+
+            container.innerHTML = `
+                <div class="p-2 bg-blue-50 text-blue-700 rounded mb-3">
+                    <b>Distance:</b> ${(route.distance / 1000).toFixed(2)} km<br>
+                    <b>Time:</b> ${(route.duration / 60).toFixed(0)} min
+                </div>
+            `;
+
+            route.legs[0].steps.forEach((step, i) => {
+                container.innerHTML += `
+                    <div class="p-2 border-l-4 border-blue-500 bg-blue-50 rounded mb-2">
+                        <b>${i + 1}. ${step.maneuver.instruction}</b><br>
+                        <small>${Math.round(step.distance)} m</small>
+                    </div>
+                `;
+            });
+
+        })
+        .catch(err => {
+            console.error("ROUTE ERROR:", err);
+            container.innerHTML = `<div class="text-red-600">${err.message}</div>`;
+        });
+    };
+
+});
+</script>
+
+</body>
+</html>
