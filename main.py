@@ -76,6 +76,36 @@ def connect_db():
 def index():
     return render_template("homepage.html.jinja")
 
+
+
+# for logout------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# explicit logout endpoint (guarantees url_for('logout') works)
+@app.route("/logout", endpoint="logout", methods=["GET"])
+@login_required
+def logout_view():
+    conn = None
+    cur = None
+    try:
+        conn = connect_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE `User` SET is_online = 0 WHERE ID = %s", (current_user.id,))
+        conn.commit()
+    except Exception:
+        app.logger.exception("Error updating is_online on logout")
+    finally:
+        try:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+    logout_user()
+    return redirect(url_for("login"))
+
+
+
 #for login page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -88,7 +118,7 @@ def login():
         cursor = connection.cursor()
 
         # Fetch user by username
-        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
+        cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
         result = cursor.fetchone()
         connection.close()
 
@@ -104,14 +134,13 @@ def login():
         # Mark user online
         connection = connect_db()
         cursor = connection.cursor()
-        cursor.execute("UPDATE `User` SET is_online = 1 WHERE ID = %s", (result["ID"],))
+        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (result["ID"],))
         connection.close()
 
         login_user(User(result))
         return redirect("/Accountpage")
 
     return render_template("login.html.jinja")
-
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -263,39 +292,70 @@ def health_data():
 
 
 #for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# robust account page handler
 @app.route("/Accountpage", methods=["GET", "POST"])
 @login_required
 def account_page():
-    if request.method == "POST":
-        file = request.files.get("picture")
+    try:
+        if request.method == "POST":
+            file = request.files.get("picture")
+            if file and file.filename:
+                filename = secure_filename(file.filename)
 
-        if file and file.filename != "":
-            filename = secure_filename(file.filename)
+                # Save into app static/profile_pics reliably
+                save_dir = os.path.join(app.root_path, "static", "profile_pics")
+                os.makedirs(save_dir, exist_ok=True)
+                save_path = os.path.join(save_dir, filename)
+                file.save(save_path)
 
-            file.save(os.path.join("static/profile_pics", filename))
+                conn = None
+                cur = None
+                try:
+                    conn = connect_db()
+                    cur = conn.cursor()
+                    # Use the same column names/casing your DB uses; ID is used here
+                    cur.execute("""
+                        UPDATE `User`
+                        SET profile_image = %s
+                        WHERE ID = %s
+                    """, (filename, current_user.id))
+                    conn.commit()
+                except Exception:
+                    app.logger.exception("Error updating profile_image in DB")
+                    flash("Failed to save profile image. Try again.")
+                    # remove file if DB update failed
+                    try:
+                        os.remove(save_path)
+                    except Exception:
+                        pass
+                finally:
+                    try:
+                        if cur:
+                            cur.close()
+                        if conn:
+                            conn.close()
+                    except Exception:
+                        pass
 
-            connection = connect_db()
-            cursor = connection.cursor()
+                return redirect(url_for("account_page"))
 
-            cursor.execute("""
-                UPDATE User
-                SET profile_image = %s
-                WHERE id = %s
-            """, (filename, current_user.id))
+        return render_template(
+            "Accountpage.html.jinja",
+            User=current_user,
+            daily_goal=session.get("cups", 0)
+        )
 
-            connection.commit()
-            cursor.close()
-            connection.close()
-
-            # 🔥 IMPORTANT: force refresh page
-            return redirect(url_for("account_page"))
-
-    return render_template(
-        "Accountpage.html.jinja",
-        User=current_user,
-        daily_goal=session.get("cups", 0)
-    )
-
+    except Exception as e:
+        # Log full traceback and show a simple error page for development
+        app.logger.exception("Unhandled error in account_page")
+        import pprint
+        pprint.pprint(sorted([(r.endpoint, str(r)) for r in app.url_map.iter_rules()]))
+        return (
+            "<h1>Internal Server Error</h1>"
+            f"<pre>{str(e)}</pre>"
+            "<p>Check server logs for full traceback.</p>",
+            500,
+        )
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
