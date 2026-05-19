@@ -1,94 +1,73 @@
 <!doctype html>
-<html>
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Friends — Daily Drip</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+  </style>
 </head>
+<body class="min-h-screen" style="background: #f0f7ff;">
 
-{% include "components/navbar.html.jinja"%}
+{% include "components/navbar.html.jinja" %}
 
+<div class="max-w-md mx-auto px-4 py-10">
 
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-sky-800">My Friends</h1>
+      <p class="text-sm text-sky-400 mt-1">{{ friends | length }} friend{% if friends | length != 1 %}s{% endif %}</p>
+    </div>
+    <a href="/addfriends"
+       class="bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+      + Add Friend
+    </a>
+  </div>
 
-  <div class="flex items-center min-h-screen bg-white">
-  <div class="container mx-auto">
-  <div class="max-w-md mx-auto my-10">
-    
+  <!-- Friends list -->
+  <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 2px 12px rgba(0,0,0,.07);">
+    {% for friend in friends %}
+    <div class="flex items-center gap-4 px-5 py-4 {% if not loop.last %}border-b border-sky-50{% endif %}">
 
+      <!-- Online dot + avatar placeholder -->
+      <div class="relative flex-shrink-0">
+        <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-500 font-bold text-sm">
+          {{ friend.username[0] | upper }}
+        </div>
+        <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white
+                     {% if friend.is_online %}bg-green-400{% else %}bg-gray-300{% endif %}">
+        </span>
+      </div>
 
+      <!-- Name + status -->
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-sm text-gray-800 truncate">{{ friend.username }}</p>
+        <p class="text-xs {% if friend.is_online %}text-green-500{% else %}text-gray-400{% endif %}">
+          {% if friend.is_online %}Online{% else %}Offline{% endif %}
+        </p>
+      </div>
 
+      <!-- Remove -->
+      <form action="/remove_friend/{{ friend.ID }}" method="POST">
+        <button type="submit"
+                class="text-xs text-red-400 hover:text-red-600 font-semibold transition px-3 py-1 rounded-lg hover:bg-red-50">
+          Remove
+        </button>
+      </form>
 
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center">
+      <p class="text-3xl mb-2">👥</p>
+      <p class="text-sm text-gray-400">No friends yet —</p>
+      <a href="/addfriends" class="text-sm text-sky-500 hover:underline font-medium">add someone!</a>
+    </div>
+    {% endfor %}
+  </div>
 
-
-
-<body class="bg-gray-100 p-4">
-    <div class=" mx-auto bg-blue-200 shadow-lg rounded-lg p-4 h-180 w-180">
-        <h1 class="text-2xl font-semibold mb-4">My Friends</h1> 
-
-
-        <!-- Friends List -->
-        <ul>
-       {% for friend in friends %}
-            
-                <li class="p-3 hover:bg-gray-50 flex justify-between items-center" >
-                   {{ friend.username }}
-                     
-                     <form action="/remove_friend/{{ friend.ID }}" method="POST" style="display:inline;">
-            <button type="submit">Remove</button>
-        </form>
-
-                {{ friend[1] }} 
-               {% if friend.is_online%}
-                   <span style="color:green;">● Online</span>
-                {% else %}
-                    <span style="color:red;">● Offline</span>
-               {% endif %}
-
-                </li>
-            {% endfor %}
-        </ul>
-       <a href="/addfriends"
-           class=" inline bg-white border-2 border-blue-500 text-blue-500 px-3  py-2 rounded-full font-semibold hover:bg-blue-500 hover:text-white transition">
-          Add+
-        </a>
 </div>
-
-</div>
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </body>
+</html>

@@ -22,6 +22,10 @@ import traceback
 
 import random
 
+from datetime import date
+import calendar as cal_module
+
+
 config = Dynaconf(settings_file = ["settings.toml"])
 
 app = Flask(__name__)
@@ -56,6 +60,18 @@ def load_user(user_id):
 
     return User(result)
 
+
+
+def connect_db():
+    conn = pymysql.connect(
+        host="db.steamcenter.tech",
+        user=config.USER,
+        password=config.PASSWORD,
+        database="daily_drip",
+        autocommit=True,
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    return conn
 
 
 def connect_db():
@@ -184,13 +200,13 @@ def register():
 def health_data():
     connection = connect_db()
     cursor = connection.cursor()
-    # 🔍 Check if user already has data
+    #  Check if user already has data
     cursor.execute("SELECT * FROM `Health Data` WHERE UserID = %s", (current_user.id,))
     existing_data = cursor.fetchone()
 
     if request.method == "POST":
 
-        # ✅ GET FORM DATA
+        #  GET FORM DATA------------------------------------------------------------------------------------------------------------
         weight = float(request.form["Weight"])
         sex = request.form["Sex"]
         active = request.form["Active"]
@@ -199,7 +215,7 @@ def health_data():
         health_list = request.form.getlist("Health")   # gets ALL checked boxes
         health = ",".join(health_list)                # store as "kidney,heart"
 
-        # ✅ AGE FROM BIRTHDATE
+        #  AGE FROM BIRTHDATE------------------------------------------------------------------------------------------------------------
         birthday_str = request.form["Age"]
         birth_date = datetime.strptime(birthday_str, "%Y-%m-%d")
         today = datetime.today()
@@ -207,20 +223,20 @@ def health_data():
             (today.month, today.day) < (birth_date.month, birth_date.day)
         )
 
-        # 💧 DEFAULT VALUES
+        #  DEFAULT VALUES------------------------------------------------------------------------------------------------------------
         sex_oz = 1
         exercise_oz = 0
         climate_oz = 1
         health_mult = 1
         health_bonus = 0
 
-        # 💧 SEX (G)
+        #  SEX (G)------------------------------------------------------------------------------------------------------------
         if sex == "Female":
             sex_oz = 0.95
         elif sex == "Male":
             sex_oz = 1.05
 
-        # 💧 EXERCISE
+        #  EXERCISE------------------------------------------------------------------------------------------------------------
         if exercise == "0-30":
             exercise_oz = 12
         elif exercise == "30-60":
@@ -230,7 +246,7 @@ def health_data():
         elif exercise == "2+":
             exercise_oz = 48
 
-        # 💧 CLIMATE (C)
+        #  CLIMATE (C)------------------------------------------------------------------------------------------------------------
         if climate == "Cold":
             climate_oz = 0.9
         elif climate == "Mild":
@@ -238,7 +254,7 @@ def health_data():
         elif climate == "Hot":
             climate_oz = 1.2
 
-        # 💧 HEALTH (H + S)
+        #  HEALTH (H + S)------------------------------------------------------------------------------------------------------------
         if health == "Currently sick":
             health_bonus = 16
         elif health == "Kidney problems":
@@ -246,18 +262,18 @@ def health_data():
         elif health == "Heart condition":
             health_mult = 0.85
 
-        # 💧 FINAL FORMULA
+        #  FINAL FORMULA------------------------------------------------------------------------------------------------------------
         water_oz = ((weight / 2) + exercise_oz) * health_mult * climate_oz * sex_oz + health_bonus
 
-        # 💧 CONVERT TO CUPS
+        #  CONVERT TO CUPS------------------------------------------------------------------------------------------------------------
         import math
         cups = math.ceil(water_oz / 8)
 
-        # ✅ STORE RESULT
+        # STORE RESULT------------------------------------------------------------------------------------------------------------
         session["cups"] = cups
 
         if existing_data:
-            # ✏️ UPDATE
+            # ✏️ UPDATE------------------------------------------------------------------------------------------------------------
             cursor.execute("""
                 UPDATE `Health Data`
                 SET Cups=%s, WaterOz=%s, Weight=%s, Age=%s, Sex=%s,
@@ -270,7 +286,7 @@ def health_data():
                 current_user.id
             ))
         else:
-            # ➕ INSERT
+            # ➕ INSERT------------------------------------------------------------------------------------------------------------
             cursor.execute("""
                 INSERT INTO `Health Data`
                 (UserID, Cups, WaterOz, Weight, Age, Sex, Active,
@@ -301,62 +317,175 @@ def account_page():
             file = request.files.get("picture")
             if file and file.filename:
                 filename = secure_filename(file.filename)
-
-                # Save into app static/profile_pics reliably
                 save_dir = os.path.join(app.root_path, "static", "profile_pics")
                 os.makedirs(save_dir, exist_ok=True)
                 save_path = os.path.join(save_dir, filename)
                 file.save(save_path)
-
-                conn = None
-                cur = None
                 try:
                     conn = connect_db()
                     cur = conn.cursor()
-                    # Use the same column names/casing your DB uses; ID is used here
-                    cur.execute("""
-                        UPDATE `User`
-                        SET profile_image = %s
-                        WHERE ID = %s
-                    """, (filename, current_user.id))
+                    cur.execute("UPDATE `User` SET profile_image = %s WHERE ID = %s", (filename, current_user.id))
                     conn.commit()
                 except Exception:
-                    app.logger.exception("Error updating profile_image in DB")
-                    flash("Failed to save profile image. Try again.")
-                    # remove file if DB update failed
-                    try:
-                        os.remove(save_path)
-                    except Exception:
-                        pass
+                    app.logger.exception("Error updating profile_image")
+                    flash("Failed to save profile image.")
+                    try: os.remove(save_path)
+                    except: pass
                 finally:
-                    try:
-                        if cur:
-                            cur.close()
-                        if conn:
-                            conn.close()
-                    except Exception:
-                        pass
-
+                    try: cur.close()
+                    except: pass
+                    try: conn.close()
+                    except: pass
                 return redirect(url_for("account_page"))
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # Health data------------------------------------------------------------------------------------------------------------
+        cursor.execute("SELECT * FROM `Health Data` WHERE UserID = %s", (current_user.id,))
+        health = cursor.fetchone() or {}
+        daily_goal = int(health.get("Cups") or 0)
+        water_oz_goal = float(health.get("WaterOz") or 0)
+
+        # Today's intake------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT COALESCE(SUM(Cups), 0) AS drank_today
+            FROM `Water Consumption`
+            WHERE UserID = %s AND DATE(Timestamp) = CURDATE()
+        """, (current_user.id,))
+        cups_drank = float((cursor.fetchone() or {}).get("drank_today") or 0)
+        goal_pct = round((cups_drank / daily_goal * 100) if daily_goal else 0)
+
+        # Total points------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT COALESCE(SUM(Points), 0) AS total_points
+            FROM `Water Consumption` WHERE UserID = %s
+        """, (current_user.id,))
+        total_points = int((cursor.fetchone() or {}).get("total_points") or 0)
+
+        # Rewards earned count
+        cursor.execute("SELECT COUNT(*) AS cnt FROM `UserRewards` WHERE UserID = %s", (current_user.id,))
+        rewards_earned = int((cursor.fetchone() or {}).get("cnt") or 0)
+
+        # Weekly consistency (Mon–Sun this week)------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT
+                DAYNAME(Timestamp) AS day_name,
+                COALESCE(SUM(Cups), 0) AS total_cups
+            FROM `Water Consumption`
+            WHERE UserID = %s
+              AND YEARWEEK(Timestamp, 1) = YEARWEEK(CURDATE(), 1)
+            GROUP BY DAYNAME(Timestamp), DAYOFWEEK(Timestamp)
+            ORDER BY DAYOFWEEK(Timestamp)
+        """, (current_user.id,))
+        week_rows = cursor.fetchall()
+        week_map = {r["day_name"]: float(r["total_cups"]) for r in week_rows}
+        days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        weekly = []
+        for day in days_order:
+            cups = week_map.get(day, 0)
+            pct = round((cups / daily_goal * 100) if daily_goal else 0)
+            weekly.append({"day": day[:3], "pct": min(pct, 100), "met": cups >= daily_goal and daily_goal > 0})
+
+        # Last 7 days hydration progress------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT DATE(Timestamp) AS log_date, COALESCE(SUM(Cups), 0) AS total_cups
+            FROM `Water Consumption`
+            WHERE UserID = %s AND Timestamp >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            GROUP BY DATE(Timestamp)
+            ORDER BY log_date
+        """, (current_user.id,))
+        progress_rows = cursor.fetchall()
+        progress_map = {str(r["log_date"]): float(r["total_cups"]) for r in progress_rows}
+        from datetime import date, timedelta
+        progress = []
+        for i in range(6, -1, -1):
+            d = date.today() - timedelta(days=i)
+            cups = progress_map.get(str(d), 0)
+            progress.append({
+                "label": d.strftime("%a"),
+                "cups": cups,
+                "goal": daily_goal,
+                "pct": min(round((cups / daily_goal * 100) if daily_goal else 0), 100)
+            })
+
+                # Recent activity (last 6 logs)------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT Cups, Points, Timestamp FROM `Water Consumption`
+            WHERE UserID = %s
+            ORDER BY Timestamp DESC LIMIT 6
+        """, (current_user.id,))
+        recent = cursor.fetchall()
+
+        # Streak (consecutive days with goal met)------------------------------------------------------------------------------------------------------------
+        cursor.execute("""
+            SELECT DATE(Timestamp) AS log_date, COALESCE(SUM(Cups), 0) AS total_cups
+            FROM `Water Consumption`
+            WHERE UserID = %s AND Cups > 0
+            GROUP BY DATE(Timestamp)
+            ORDER BY log_date DESC
+        """, (current_user.id,))
+        streak_rows = cursor.fetchall()
+
+        streak = 0
+        if daily_goal > 0:
+            check = date.today()
+
+            for row in streak_rows:
+                if str(row["log_date"]) == str(check) and float(row["total_cups"]) >= daily_goal:
+                    streak += 1
+                    check -= timedelta(days=1)
+                else:
+                    break
+
+        # Calendar goal days for current month------------------------------------------------------------------------------------------------------------
+        today = date.today()
+        first_of_month = today.replace(day=1)
+
+        last_day = cal_module.monthrange(today.year, today.month)[1]
+        last_of_month = today.replace(day=last_day)
+
+        cursor.execute("""
+            SELECT DATE(Timestamp) AS log_date,
+                   COALESCE(SUM(Cups), 0) AS total_cups
+            FROM `Water Consumption`
+            WHERE UserID = %s
+              AND DATE(Timestamp) BETWEEN %s AND %s
+              AND Cups > 0
+            GROUP BY DATE(Timestamp)
+        """, (current_user.id, first_of_month, last_of_month))
+
+        month_rows = cursor.fetchall()
+
+        goal_met_days = [
+            row["log_date"].day
+            for row in month_rows
+            if daily_goal > 0 and float(row["total_cups"]) >= daily_goal
+        ]
+
+        cursor.close()
+        conn.close()
 
         return render_template(
             "Accountpage.html.jinja",
             User=current_user,
-            daily_goal=session.get("cups", 0)
+            daily_goal=daily_goal,
+            water_oz_goal=water_oz_goal,
+            cups_drank=cups_drank,
+            goal_pct=goal_pct,
+            total_points=total_points,
+            rewards_earned=rewards_earned,
+            weekly=weekly,
+            progress=progress,
+            recent=recent,
+            streak=streak,
+            health=health,
+            goal_met_days=goal_met_days,
         )
 
     except Exception as e:
-        # Log full traceback and show a simple error page for development
         app.logger.exception("Unhandled error in account_page")
-        import pprint
-        pprint.pprint(sorted([(r.endpoint, str(r)) for r in app.url_map.iter_rules()]))
-        return (
-            "<h1>Internal Server Error</h1>"
-            f"<pre>{str(e)}</pre>"
-            "<p>Check server logs for full traceback.</p>",
-            500,
-        )
-
+        return f"<h1>Error</h1><pre>{e}</pre>", 500
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
 @login_required
@@ -434,7 +563,7 @@ def predict():
 
     file = request.files["file"]
 
-    # predict_capacity returns ml and fl_oz as separate floats
+    # predict_capacity returns ml and fl_oz as separate floats------------------------------------------------------------------------------------------------------------
     predicted_ml, predicted_oz = predict_capacity(file)
 
     return jsonify({
@@ -458,7 +587,7 @@ def tracker():
         result = cursor.fetchone()
         daily_goal = (result or {}).get("Cups") or 0
 
-        # 2. Cups drank today
+        # 2. Cups drank today------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT COALESCE(SUM(Cups), 0) AS drank_today
             FROM `Water Consumption`
@@ -468,12 +597,12 @@ def tracker():
         result = cursor.fetchone()
         cups_drank = (result or {}).get("drank_today", 0)
 
-        # 3. Remaining cups
+        # 3. Remaining cups------------------------------------------------------------------------------------------------------------
         daily_goal = int(daily_goal)
         cups_drank = int(cups_drank)
 
         cups_left = max(daily_goal - cups_drank, 0)
-        # 4. Weekly data (FIXED)
+        # 4. Weekly data (FIXED)------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT 
                 DAYNAME(Timestamp) AS day,
@@ -493,14 +622,14 @@ def tracker():
             "Thursday": 0, "Friday": 0, "Saturday": 0, "Sunday": 0
         }
 
-        # NOTE: row["day"] is a DATE, not weekday name
+        # NOTE: row["day"] is a DATE, not weekday name------------------------------------------------------------------------------------------------------------
         for row in weekly_rows:
             day_name = row["day"]
             tracker_data[day_name] = row["total_cups"]
 
         days = list(tracker_data.keys())
 
-        # 5. Points
+        # 5. Points------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`
@@ -541,16 +670,16 @@ def capture():
         flash("No selected file")
         return redirect("/camera")
 
-    # Save uploaded image
+    # Save uploaded image------------------------------------------------------------------------------------------------------------
     filename = f"drink_{datetime.now().timestamp()}.jpg"
     filepath = os.path.join("static/user_uploads", filename)
     file.save(filepath)
 
-    # Predict container capacity in mL
+    # Predict container capacity in mL------------------------------------------------------------------------------------------------------------
     capacity_ml, capacity_oz = predict_capacity(filepath)
-    # Convert to cups
+    # Convert to cups------------------------------------------------------------------------------------------------------------
     volume_cups = round(capacity_ml / 240)
-    # Save prediction to DB
+    # Save prediction to DB------------------------------------------------------------------------------------------------------------
     connection = connect_db()
     cursor = connection.cursor()
     try:
@@ -660,7 +789,7 @@ def pick_weighted_rewards(all_rewards, count):
 
 
 
-# Wheel of drinks route
+# Wheel of drinks route------------------------------------------------------------------------------------------------------------
 @app.route("/wheelofdrinks")
 @login_required
 def wheelofdrinks():
@@ -678,7 +807,7 @@ def wheelofdrinks():
         cursor.execute("SELECT * FROM Rewards")
         rewards = cursor.fetchall() or []
 
-        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)
+        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT ur.ID AS ur_id,
                    ur.UserID,
@@ -715,7 +844,7 @@ def wheelofdrinks():
     )
 
 
-# Gacha spin route
+# Gacha spin route------------------------------------------------------------------------------------------------------------
 @app.route("/gacha_spin", methods=["POST"])
 @login_required
 def gacha_spin():
@@ -745,7 +874,7 @@ def gacha_spin():
         if points < cost:
             return jsonify({"success": False, "message": "Not enough points"}), 400
 
-        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it
+        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
             VALUES (%s, %s, %s, NOW(), %s)
@@ -762,7 +891,7 @@ def gacha_spin():
                 VALUES (%s, %s)
             """, (current_user.id, r["ID"]))
 
-        # recompute remaining points
+        # recompute remaining points------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`
@@ -821,7 +950,7 @@ def reward_detail(reward_id):
 
 
 
-    # optional: map weight → rarity
+    # optional: map weight → rarity------------------------------------------------------------------------------------------------------------
     weight = reward["Weight"]
     if weight <= 1:
         rarity = "Legendary"
@@ -864,3 +993,33 @@ def catalog():
 
     return render_template("catalog.html.jinja", rewards=rewards)
 
+
+@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.Name, u.Username, u.profile_image, u.ID,
+               COALESCE(SUM(wc.Cups), 0) AS total_cups
+        FROM `User` u
+        LEFT JOIN `Water Consumption` wc ON wc.UserID = u.ID
+        GROUP BY u.ID, u.Name, u.Username, u.profile_image
+        ORDER BY total_cups DESC
+        LIMIT 10
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    leaderboard = []
+    for i, r in enumerate(rows):
+        leaderboard.append({
+            "rank": i + 1,
+            "name": r["Name"],
+            "username": r["Username"],
+            "profile_image": r["profile_image"],
+            "total_cups": round(float(r["total_cups"]), 1),
+            "is_self": r["ID"] == current_user.id
+        })
+
+    return render_template("Leaderboard.html.jinja", leaderboard=leaderboard)
