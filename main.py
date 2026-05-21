@@ -22,8 +22,6 @@ import traceback
 
 import random
 
-from werkzeug.security import generate_password_hash, check_password_hash
-
 config = Dynaconf(settings_file = ["settings.toml"])
 
 app = Flask(__name__)
@@ -72,38 +70,20 @@ def connect_db():
     return conn
 
 
+tracker_data = {
+    "Monday":0,
+    "Tuesday":0,
+    "Wednesday":0,
+    "Thursday":0,
+    "Friday":0,
+    "Saturday":0,
+    "Sunday":0
+} #used for the tracker data
 
 #All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
 @app.route("/")
 def index():
     return render_template("homepage.html.jinja")
-
-# explicit logout endpoint (guarantees url_for('logout') works)
-@app.route("/logout", endpoint="logout", methods=["GET"])
-@login_required
-def logout_view():
-    conn = None
-    cur = None
-    try:
-        conn = connect_db()
-        cur = conn.cursor()
-        cur.execute("UPDATE `User` SET is_online = 0 WHERE ID = %s", (current_user.id,))
-        conn.commit()
-    except Exception:
-        app.logger.exception("Error updating is_online on logout")
-    finally:
-        try:
-            if cur:
-                cur.close()
-            if conn:
-                conn.close()
-        except Exception:
-            pass
-
-    logout_user()
-    return redirect(url_for("login"))
-
-
 
 #for login page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
@@ -140,7 +120,6 @@ def login():
         return redirect("/Accountpage")
 
     return render_template("login.html.jinja")
-    
 
 #for register page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
@@ -180,16 +159,12 @@ def register():
 
             connection.close()
 
-            # LOGIN USER
-            login_user(User(new_user))
-
+            except pymysql.err.IntegrityError:
+                        flash("Email already registered!")
+                        connection.close()
+                        return render_template("register.html.jinja")
             return redirect("/healthdata")
-
-        except pymysql.err.IntegrityError:
-            flash("Email already registered!")
-            connection.close()
-            return render_template("register.html.jinja")
-
+        
     return render_template("register.html.jinja")
 
 
@@ -199,13 +174,13 @@ def register():
 def health_data():
     connection = connect_db()
     cursor = connection.cursor()
-    # 🔍 Check if user already has data
+    #  Check if user already has data
     cursor.execute("SELECT * FROM `Health Data` WHERE UserID = %s", (current_user.id,))
     existing_data = cursor.fetchone()
 
     if request.method == "POST":
 
-        # ✅ GET FORM DATA
+        #  GET FORM DATA------------------------------------------------------------------------------------------------------------
         weight = float(request.form["Weight"])
         sex = request.form["Sex"]
         active = request.form["Active"]
@@ -214,7 +189,7 @@ def health_data():
         health_list = request.form.getlist("Health")   # gets ALL checked boxes
         health = ",".join(health_list)                # store as "kidney,heart"
 
-        # ✅ AGE FROM BIRTHDATE
+        #  AGE FROM BIRTHDATE------------------------------------------------------------------------------------------------------------
         birthday_str = request.form["Age"]
         birth_date = datetime.strptime(birthday_str, "%Y-%m-%d")
         today = datetime.today()
@@ -222,20 +197,20 @@ def health_data():
             (today.month, today.day) < (birth_date.month, birth_date.day)
         )
 
-        # 💧 DEFAULT VALUES
+        #  DEFAULT VALUES------------------------------------------------------------------------------------------------------------
         sex_oz = 1
         exercise_oz = 0
         climate_oz = 1
         health_mult = 1
         health_bonus = 0
 
-        # 💧 SEX (G)
+        #  SEX (G)------------------------------------------------------------------------------------------------------------
         if sex == "Female":
             sex_oz = 0.95
         elif sex == "Male":
             sex_oz = 1.05
 
-        # 💧 EXERCISE
+        #  EXERCISE------------------------------------------------------------------------------------------------------------
         if exercise == "0-30":
             exercise_oz = 12
         elif exercise == "30-60":
@@ -245,7 +220,7 @@ def health_data():
         elif exercise == "2+":
             exercise_oz = 48
 
-        # 💧 CLIMATE (C)
+        #  CLIMATE (C)------------------------------------------------------------------------------------------------------------
         if climate == "Cold":
             climate_oz = 0.9
         elif climate == "Mild":
@@ -253,7 +228,7 @@ def health_data():
         elif climate == "Hot":
             climate_oz = 1.2
 
-        # 💧 HEALTH (H + S)
+        #  HEALTH (H + S)------------------------------------------------------------------------------------------------------------
         if health == "Currently sick":
             health_bonus = 16
         elif health == "Kidney problems":
@@ -261,18 +236,18 @@ def health_data():
         elif health == "Heart condition":
             health_mult = 0.85
 
-        # 💧 FINAL FORMULA
+        #  FINAL FORMULA------------------------------------------------------------------------------------------------------------
         water_oz = ((weight / 2) + exercise_oz) * health_mult * climate_oz * sex_oz + health_bonus
 
-        # 💧 CONVERT TO CUPS
+        #  CONVERT TO CUPS------------------------------------------------------------------------------------------------------------
         import math
         cups = math.ceil(water_oz / 8)
 
-        # ✅ STORE RESULT
+        # STORE RESULT------------------------------------------------------------------------------------------------------------
         session["cups"] = cups
 
         if existing_data:
-            # ✏️ UPDATE
+            # ✏️ UPDATE------------------------------------------------------------------------------------------------------------
             cursor.execute("""
                 UPDATE `Health Data`
                 SET Cups=%s, WaterOz=%s, Weight=%s, Age=%s, Sex=%s,
@@ -285,7 +260,7 @@ def health_data():
                 current_user.id
             ))
         else:
-            # ➕ INSERT
+            # ➕ INSERT------------------------------------------------------------------------------------------------------------
             cursor.execute("""
                 INSERT INTO `Health Data`
                 (UserID, Cups, WaterOz, Weight, Age, Sex, Active,
@@ -307,68 +282,32 @@ def health_data():
 
 
 #for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Accountpage", methods=["GET", "POST"])
+@app.route("/Accountpage",methods=["GET", "POST"])
 @login_required
 def account_page():
-    try:
-        if request.method == "POST":
-            file = request.files.get("picture")
-            if file and file.filename:
-                filename = secure_filename(file.filename)
+    if request.method == "POST":
+        file = request.files["picture"]
+        if file:
+            filename = secure_filename(file.filename)
 
-                # Save into app static/profile_pics reliably
-                save_dir = os.path.join(app.root_path, "static", "profile_pics")
-                os.makedirs(save_dir, exist_ok=True)
-                save_path = os.path.join(save_dir, filename)
-                file.save(save_path)
+            # save file to static folder
+            file.save(os.path.join("static/profile_pics", filename))
 
-                conn = None
-                cur = None
-                try:
-                    conn = connect_db()
-                    cur = conn.cursor()
-                    # Use the same column names/casing your DB uses; ID is used here
-                    cur.execute("""
-                        UPDATE `User`
-                        SET profile_image = %s
-                        WHERE ID = %s
-                    """, (filename, current_user.id))
-                    conn.commit()
-                except Exception:
-                    app.logger.exception("Error updating profile_image in DB")
-                    flash("Failed to save profile image. Try again.")
-                    # remove file if DB update failed
-                    try:
-                        os.remove(save_path)
-                    except Exception:
-                        pass
-                finally:
-                    try:
-                        if cur:
-                            cur.close()
-                        if conn:
-                            conn.close()
-                    except Exception:
-                        pass
+            # store filename (example: simple user object)
+            current_user.profile_image = filename
+            connection = connect_db()
+        cursor = connection.cursor()
+        cursor.execute(""" UPDATE User
+                      SET profile_image =%s
+                      WHERE id = %s""", (filename, current_user.id))
 
-                return redirect(url_for("account_page"))
+        connection.commit()
 
-        return render_template(
-            "Accountpage.html.jinja",
-            User=current_user,
-            daily_goal=session.get("cups", 0)
-        )   
-    except Exception as e:
-        # Log full traceback and show a simple error page for development
-        app.logger.exception("Unhandled error in account_page")
-        import pprint
-        pprint.pprint(sorted([(r.endpoint, str(r)) for r in app.url_map.iter_rules()]))
-        return (
-            "<h1>Internal Server Error</h1>"
-            f"<pre>{str(e)}</pre>"
-            "<p>Check server logs for full traceback.</p>",
-            500,
-        )
+                
+    
+    return render_template("Accountpage.html.jinja",User=current_user.id)
+
+
 
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -446,7 +385,7 @@ def predict():
 
     file = request.files["file"]
 
-    # predict_capacity returns ml and fl_oz as separate floats
+    # predict_capacity returns ml and fl_oz as separate floats------------------------------------------------------------------------------------------------------------
     predicted_ml, predicted_oz = predict_capacity(file)
 
     return jsonify({
@@ -470,7 +409,7 @@ def tracker():
         result = cursor.fetchone()
         daily_goal = (result or {}).get("Cups") or 0
 
-        # 2. Cups drank today
+
         cursor.execute("""
             SELECT COALESCE(SUM(Cups), 0) AS drank_today
             FROM `Water Consumption`
@@ -480,12 +419,8 @@ def tracker():
         result = cursor.fetchone()
         cups_drank = (result or {}).get("drank_today", 0)
 
-        # 3. Remaining cups
-        daily_goal = int(daily_goal)
-        cups_drank = int(cups_drank)
-
         cups_left = max(daily_goal - cups_drank, 0)
-        # 4. Weekly data (FIXED)
+
         cursor.execute("""
             SELECT 
                 DAYNAME(Timestamp) AS day,
@@ -505,14 +440,13 @@ def tracker():
             "Thursday": 0, "Friday": 0, "Saturday": 0, "Sunday": 0
         }
 
-        # NOTE: row["day"] is a DATE, not weekday name
         for row in weekly_rows:
             day_name = row["day"]
             tracker_data[day_name] = row["total_cups"]
 
         days = list(tracker_data.keys())
 
-        # 5. Points
+        # ⭐ ADD THIS
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`
@@ -553,16 +487,16 @@ def capture():
         flash("No selected file")
         return redirect("/camera")
 
-    # Save uploaded image
+    # Save uploaded image------------------------------------------------------------------------------------------------------------
     filename = f"drink_{datetime.now().timestamp()}.jpg"
     filepath = os.path.join("static/user_uploads", filename)
     file.save(filepath)
 
-    # Predict container capacity in mL
+    # Predict container capacity in mL------------------------------------------------------------------------------------------------------------
     capacity_ml, capacity_oz = predict_capacity(filepath)
-    # Convert to cups
+    # Convert to cups------------------------------------------------------------------------------------------------------------
     volume_cups = round(capacity_ml / 240)
-    # Save prediction to DB
+    # Save prediction to DB------------------------------------------------------------------------------------------------------------
     connection = connect_db()
     cursor = connection.cursor()
     try:
@@ -672,7 +606,7 @@ def pick_weighted_rewards(all_rewards, count):
 
 
 
-# Wheel of drinks route
+# Wheel of drinks route------------------------------------------------------------------------------------------------------------
 @app.route("/wheelofdrinks")
 @login_required
 def wheelofdrinks():
@@ -690,7 +624,7 @@ def wheelofdrinks():
         cursor.execute("SELECT * FROM Rewards")
         rewards = cursor.fetchall() or []
 
-        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)
+        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT ur.ID AS ur_id,
                    ur.UserID,
@@ -727,7 +661,7 @@ def wheelofdrinks():
     )
 
 
-# Gacha spin route
+# Gacha spin route------------------------------------------------------------------------------------------------------------
 @app.route("/gacha_spin", methods=["POST"])
 @login_required
 def gacha_spin():
@@ -757,7 +691,7 @@ def gacha_spin():
         if points < cost:
             return jsonify({"success": False, "message": "Not enough points"}), 400
 
-        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it
+        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
             VALUES (%s, %s, %s, NOW(), %s)
@@ -774,7 +708,7 @@ def gacha_spin():
                 VALUES (%s, %s)
             """, (current_user.id, r["ID"]))
 
-        # recompute remaining points
+        # recompute remaining points------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`
@@ -833,7 +767,7 @@ def reward_detail(reward_id):
 
 
 
-    # optional: map weight → rarity
+    # optional: map weight → rarity------------------------------------------------------------------------------------------------------------
     weight = reward["Weight"]
     if weight <= 1:
         rarity = "Legendary"
@@ -969,4 +903,32 @@ def get_water_locations():
             "lng": float(location["Longitude"])
         })
 
-    return jsonify(results)
+    return jsonify(results)@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.Name, u.Username, u.profile_image, u.ID,
+               COALESCE(SUM(wc.Cups), 0) AS total_cups
+        FROM `User` u
+        LEFT JOIN `Water Consumption` wc ON wc.UserID = u.ID
+        GROUP BY u.ID, u.Name, u.Username, u.profile_image
+        ORDER BY total_cups DESC
+        LIMIT 10
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    leaderboard = []
+    for i, r in enumerate(rows):
+        leaderboard.append({
+            "rank": i + 1,
+            "name": r["Name"],
+            "username": r["Username"],
+            "profile_image": r["profile_image"],
+            "total_cups": round(float(r["total_cups"]), 1),
+            "is_self": r["ID"] == current_user.id
+        })
+
+    return render_template("Leaderboard.html.jinja", leaderboard=leaderboard)
