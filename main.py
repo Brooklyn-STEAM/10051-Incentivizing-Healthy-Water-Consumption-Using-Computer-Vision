@@ -89,7 +89,7 @@ def login():
         cursor = connection.cursor()
 
         # Fetch user by username
-        cursor.execute("SELECT * FROM `User` WHERE `Username` = %s", (username,))
+        cursor.execute("SELECT * FROM User WHERE Username = %s", (username,))
         result = cursor.fetchone()
         connection.close()
 
@@ -105,7 +105,7 @@ def login():
         # Mark user online
         connection = connect_db()
         cursor = connection.cursor()
-        cursor.execute("UPDATE `User` SET is_online = 1 WHERE ID = %s", (result["ID"],))
+        cursor.execute("UPDATE User SET is_online = 1 WHERE ID = %s", (result["ID"],))
         connection.close()
 
         login_user(User(result))
@@ -131,16 +131,25 @@ def register():
         elif len(password) < 8:
             flash("Password must be at least 8 characters long")
             return render_template("register.html.jinja")
-        else:
-            connection = connect_db()
-            cursor = connection.cursor()
-            try: 
-                 # Insert new user
-                cursor.execute("""
+
+        connection = connect_db()
+        cursor = connection.cursor()
+
+        try:
+            hashed_password = generate_password_hash(password)
+
+            cursor.execute("""
                 INSERT INTO User (Name, Email, Password, Username, is_online)
                 VALUES (%s, %s, %s, %s, %s)
-                """, (name, email, password, username, 0))
-                connection.close()
+            """, (name, email, hashed_password, username, 0))
+
+            connection.commit()
+
+            # GET NEW USER
+            cursor.execute("SELECT * FROM User WHERE Email = %s", (email,))
+            new_user = cursor.fetchone()
+
+            connection.close()
 
             except pymysql.err.IntegrityError:
                         flash("Email already registered!")
@@ -150,19 +159,20 @@ def register():
 
     return render_template("register.html.jinja")
 
+
 #for the health data page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route("/healthdata", methods=["GET", "POST"])
 @login_required
 def health_data():
     connection = connect_db()
     cursor = connection.cursor()
-    # 🔍 Check if user already has data
+    #  Check if user already has data
     cursor.execute("SELECT * FROM `Health Data` WHERE UserID = %s", (current_user.id,))
     existing_data = cursor.fetchone()
 
     if request.method == "POST":
 
-        # ✅ GET FORM DATA
+        #  GET FORM DATA------------------------------------------------------------------------------------------------------------
         weight = float(request.form["Weight"])
         sex = request.form["Sex"]
         active = request.form["Active"]
@@ -171,7 +181,7 @@ def health_data():
         health_list = request.form.getlist("Health")   # gets ALL checked boxes
         health = ",".join(health_list)                # store as "kidney,heart"
 
-        # ✅ AGE FROM BIRTHDATE
+        #  AGE FROM BIRTHDATE------------------------------------------------------------------------------------------------------------
         birthday_str = request.form["Age"]
         birth_date = datetime.strptime(birthday_str, "%Y-%m-%d")
         today = datetime.today()
@@ -179,20 +189,20 @@ def health_data():
             (today.month, today.day) < (birth_date.month, birth_date.day)
         )
 
-        # 💧 DEFAULT VALUES
+        #  DEFAULT VALUES------------------------------------------------------------------------------------------------------------
         sex_oz = 1
         exercise_oz = 0
         climate_oz = 1
         health_mult = 1
         health_bonus = 0
 
-        # 💧 SEX (G)
+        #  SEX (G)------------------------------------------------------------------------------------------------------------
         if sex == "Female":
             sex_oz = 0.95
         elif sex == "Male":
             sex_oz = 1.05
 
-        # 💧 EXERCISE
+        #  EXERCISE------------------------------------------------------------------------------------------------------------
         if exercise == "0-30":
             exercise_oz = 12
         elif exercise == "30-60":
@@ -202,7 +212,7 @@ def health_data():
         elif exercise == "2+":
             exercise_oz = 48
 
-        # 💧 CLIMATE (C)
+        #  CLIMATE (C)------------------------------------------------------------------------------------------------------------
         if climate == "Cold":
             climate_oz = 0.9
         elif climate == "Mild":
@@ -210,7 +220,7 @@ def health_data():
         elif climate == "Hot":
             climate_oz = 1.2
 
-        # 💧 HEALTH (H + S)
+        #  HEALTH (H + S)------------------------------------------------------------------------------------------------------------
         if health == "Currently sick":
             health_bonus = 16
         elif health == "Kidney problems":
@@ -218,18 +228,18 @@ def health_data():
         elif health == "Heart condition":
             health_mult = 0.85
 
-        # 💧 FINAL FORMULA
+        #  FINAL FORMULA------------------------------------------------------------------------------------------------------------
         water_oz = ((weight / 2) + exercise_oz) * health_mult * climate_oz * sex_oz + health_bonus
 
-        # 💧 CONVERT TO CUPS
+        #  CONVERT TO CUPS------------------------------------------------------------------------------------------------------------
         import math
         cups = math.ceil(water_oz / 8)
 
-        # ✅ STORE RESULT
+        # STORE RESULT------------------------------------------------------------------------------------------------------------
         session["cups"] = cups
 
         if existing_data:
-            # ✏️ UPDATE
+            # ✏️ UPDATE------------------------------------------------------------------------------------------------------------
             cursor.execute("""
                 UPDATE `Health Data`
                 SET Cups=%s, WaterOz=%s, Weight=%s, Age=%s, Sex=%s,
@@ -242,7 +252,7 @@ def health_data():
                 current_user.id
             ))
         else:
-            # ➕ INSERT
+            # ➕ INSERT------------------------------------------------------------------------------------------------------------
             cursor.execute("""
                 INSERT INTO `Health Data`
                 (UserID, Cups, WaterOz, Weight, Age, Sex, Active,
@@ -267,37 +277,7 @@ def health_data():
 @app.route("/Accountpage", methods=["GET", "POST"])
 @login_required
 def account_page():
-    if request.method == "POST":
-        file = request.files.get("picture")
-
-        if file and file.filename != "":
-            filename = secure_filename(file.filename)
-
-            file.save(os.path.join("static/profile_pics", filename))
-
-            connection = connect_db()
-            cursor = connection.cursor()
-
-            cursor.execute("""
-                UPDATE User
-                SET profile_image = %s
-                WHERE id = %s
-            """, (filename, current_user.id))
-
-            connection.commit()
-            cursor.close()
-            connection.close()
-            
-
-            # 🔥 IMPORTANT: force refresh page
-            return redirect(url_for("account_page"))
-
-    return render_template(
-        "Accountpage.html.jinja",
-        User=current_user,
-        daily_goal=session.get("cups", 0)
-    )
-
+    return render_template("Accountpage.html.jinja")
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
@@ -587,9 +567,34 @@ def remove_friend(friend_id):
 
     return redirect('/friends')
 
-if __name__ == "__main__":
-    app.run(debug=True)
 
+
+@app.route("/typing/<int:group_id>", methods=["POST"])
+@login_required
+def typing(group_id):
+
+    typing_status = request.form.get("typing")
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE Groupmember
+        SET typing = %s
+        WHERE group_id = %s
+        AND user_id = %s
+        """,
+        (
+            typing_status,
+            group_id,
+            session["user_id"]
+        )
+    )
+
+    connection.commit()
+
+    return "", 204
 
 @app.route("/typing/<int:group_id>", methods=["POST"])
 @login_required
@@ -629,7 +634,7 @@ def predict():
 
     file = request.files["file"]
 
-    # predict_capacity returns ml and fl_oz as separate floats
+    # predict_capacity returns ml and fl_oz as separate floats------------------------------------------------------------------------------------------------------------
     predicted_ml, predicted_oz = predict_capacity(file)
 
     return jsonify({
@@ -736,16 +741,16 @@ def capture():
         flash("No selected file")
         return redirect("/camera")
 
-    # Save uploaded image
+    # Save uploaded image------------------------------------------------------------------------------------------------------------
     filename = f"drink_{datetime.now().timestamp()}.jpg"
     filepath = os.path.join("static/user_uploads", filename)
     file.save(filepath)
 
-    # Predict container capacity in mL
+    # Predict container capacity in mL------------------------------------------------------------------------------------------------------------
     capacity_ml, capacity_oz = predict_capacity(filepath)
-    # Convert to cups
+    # Convert to cups------------------------------------------------------------------------------------------------------------
     volume_cups = round(capacity_ml / 240)
-    # Save prediction to DB
+    # Save prediction to DB------------------------------------------------------------------------------------------------------------
     connection = connect_db()
     cursor = connection.cursor()
     try:
@@ -831,7 +836,7 @@ def add_drink():
 # ----------------------------
 # TESTING PREDICTION
 # ----------------------------
-if __name__ == "__main__":
+
     test_image = "static/user_uploads/drink_1774962039.119192.jpg"
 
     predicted_ml, predicted_oz = predict_capacity(test_image)
@@ -855,7 +860,7 @@ def pick_weighted_rewards(all_rewards, count):
 
 
 
-# Wheel of drinks route
+# Wheel of drinks route------------------------------------------------------------------------------------------------------------
 @app.route("/wheelofdrinks")
 @login_required
 def wheelofdrinks():
@@ -873,7 +878,7 @@ def wheelofdrinks():
         cursor.execute("SELECT * FROM Rewards")
         rewards = cursor.fetchall() or []
 
-        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)
+        # Fetch user's earned rewards joined with reward metadata (Image, Name, etc.)------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT ur.ID AS ur_id,
                    ur.UserID,
@@ -910,7 +915,7 @@ def wheelofdrinks():
     )
 
 
-# Gacha spin route
+# Gacha spin route------------------------------------------------------------------------------------------------------------
 @app.route("/gacha_spin", methods=["POST"])
 @login_required
 def gacha_spin():
@@ -940,7 +945,7 @@ def gacha_spin():
         if points < cost:
             return jsonify({"success": False, "message": "Not enough points"}), 400
 
-        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it
+        # Deduct points; include Oz to satisfy NOT NULL if your schema requires it------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             INSERT INTO `Water Consumption` (UserID, Points, Cups, Timestamp, Image)
             VALUES (%s, %s, %s, NOW(), %s)
@@ -957,7 +962,7 @@ def gacha_spin():
                 VALUES (%s, %s)
             """, (current_user.id, r["ID"]))
 
-        # recompute remaining points
+        # recompute remaining points------------------------------------------------------------------------------------------------------------
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`
@@ -1016,7 +1021,7 @@ def reward_detail(reward_id):
 
 
 
-    # optional: map weight → rarity
+    # optional: map weight → rarity------------------------------------------------------------------------------------------------------------
     weight = reward["Weight"]
     if weight <= 1:
         rarity = "Legendary"
@@ -1058,3 +1063,126 @@ def catalog():
     conn.close()
 
     return render_template("catalog.html.jinja", rewards=rewards)
+
+@app.route("/map")
+def map_page():
+
+    location_id = request.args.get("location_id")
+    target_location = None
+
+    mapbox_token = config.MAPBOX_TOKEN  # ✅ ADD THIS HERE
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT ID, Name, Address, Latitude, Longitude
+        FROM `Water Fountains`
+        WHERE Latitude IS NOT NULL
+        AND Longitude IS NOT NULL
+    """)
+
+    locations_raw = cursor.fetchall()
+
+    water_locations = []
+
+    for location in locations_raw:
+        water_locations.append({
+            "id": location["ID"],
+            "name": location["Name"],
+            "address": location["Address"],
+            "lat": float(location["Latitude"]),
+            "lng": float(location["Longitude"])
+        })
+
+    if location_id:
+        cursor.execute("""
+            SELECT ID, Name, Address, Latitude, Longitude
+            FROM `Water Fountains`
+            WHERE ID = %s
+        """, (location_id,))
+
+        location = cursor.fetchone()
+
+        if location:
+            target_location = {
+                "id": location["ID"],
+                "name": location["Name"],
+                "address": location["Address"],
+                "lat": float(location["Latitude"]),
+                "lng": float(location["Longitude"])
+            }
+
+    connection.close()
+
+    return render_template(
+        "map.html.jinja",
+        water_locations=water_locations,
+        target_location=target_location,
+        MAPBOX_TOKEN=mapbox_token   # ✅ THIS IS NOW SAFE
+    )
+
+
+@app.route("/get-water-locations")
+def get_water_locations():
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            ID,
+            Name,
+            Address,
+            Latitude,
+            Longitude
+        FROM `Water Fountains`
+        WHERE Latitude IS NOT NULL
+        AND Longitude IS NOT NULL
+    """)
+
+    locations = cursor.fetchall()
+
+    connection.close()
+
+    results = []
+
+    for location in locations:
+
+        results.append({
+            "id": location["ID"],
+            "name": location["Name"],
+            "address": location["Address"],
+            "lat": float(location["Latitude"]),
+            "lng": float(location["Longitude"])
+        })
+
+    return jsonify(results)@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.Name, u.Username, u.profile_image, u.ID,
+               COALESCE(SUM(wc.Cups), 0) AS total_cups
+        FROM `User` u
+        LEFT JOIN `Water Consumption` wc ON wc.UserID = u.ID
+        GROUP BY u.ID, u.Name, u.Username, u.profile_image
+        ORDER BY total_cups DESC
+        LIMIT 10
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    leaderboard = []
+    for i, r in enumerate(rows):
+        leaderboard.append({
+            "rank": i + 1,
+            "name": r["Name"],
+            "username": r["Username"],
+            "profile_image": r["profile_image"],
+            "total_cups": round(float(r["total_cups"]), 1),
+            "is_self": r["ID"] == current_user.id
+        })
+
+    return render_template("Leaderboard.html.jinja", leaderboard=leaderboard)

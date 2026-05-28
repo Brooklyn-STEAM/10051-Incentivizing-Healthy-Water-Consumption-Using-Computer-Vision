@@ -1,329 +1,254 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spin — Daily Drip</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .drink-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .drink-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(14,165,233,.18); }
+    .rarity-legendary { color: #b45309; }
+    .rarity-epic      { color: #7c3aed; }
+    .rarity-rare      { color: #2563eb; }
+    .rarity-common    { color: #6b7280; }
+    .glow-legendary { box-shadow: 0 0 0 2px #fbbf24, 0 4px 16px rgba(251,191,36,.25); }
+    .glow-epic      { box-shadow: 0 0 0 2px #a78bfa, 0 4px 16px rgba(167,139,250,.2); }
+    .glow-rare      { box-shadow: 0 0 0 2px #60a5fa, 0 4px 16px rgba(96,165,250,.2); }
+    .machine-wrap { position: relative; display: inline-block; }
+    .machine-glow {
+      position: absolute; inset: -16px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(56,189,248,.25) 0%, transparent 70%);
+      animation: pulse-glow 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: .6; transform: scale(1); }
+      50%       { opacity: 1;  transform: scale(1.08); }
+    }
+  </style>
 </head>
+<body class="min-h-screen" style="background: #f0f7ff;">
 
-<body class="bg-white min-h-screen flex flex-col items-center">
-  {% include "components/navbar.html.jinja" %}
- 
-  <!-- TOP SECTION -->
-  <section class="max-w-4xl w-full px-6 py-10 bg-blue-200 rounded-lg shadow mt-10 text-center">
-      <h1 class="text-3xl font-bold mt-4">Daily Drip</h1>
+{% include "components/navbar.html.jinja" %}
 
-      <p class="mt-2 text-lg points-display">Points: {{ points }}</p>
+<!-- SPIN SECTION -->
+<div class="max-w-4xl mx-auto px-4 py-10">
+  <div class="bg-white rounded-2xl px-8 py-10 text-center" style="box-shadow: 0 2px 20px rgba(14,165,233,.1);">
 
-      <div class="mt-6 relative">
+    <h1 class="text-2xl font-bold text-sky-800 mb-1">Wheel of Drinks</h1>
+    <p class="text-sm text-sky-400 mb-6">Spend your points to win random drinks!</p>
+
+    <div class="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-5 py-2 mb-8">
+      <span class="text-lg">🏆</span>
+      <span class="font-bold text-amber-600 points-display text-lg">{{ points }}</span>
+      <span class="text-sm text-amber-400 justify-center">points</span>
+    </div>
+
+    <div class="mt-6 relative justify-center">
           <img src="{{ url_for('static', filename='machine.png') }}" 
                class="w-80 mx-auto animate-pulse">
       </div>
 
-      <div class="flex gap-4 mt-6 text-center justify-center">
-          <button onclick="spin(1)"
-              class="bg-yellow-200 px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105">
-              10 Points • 1 Pull
-          </button>
-
-          <button onclick="spin(10)"
-              class="bg-yellow-200 px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105">
-              50 Points • 10 Pulls
-          </button>
-      </div>
-  </section>
-
-  <!-- RESULT MODAL -->
-  <div id="resultModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div class="bg-blue-200 p-6 rounded-xl text-center max-w-md w-full">
-          <h2 class="text-xl font-bold mb-4">You Won!</h2>
-
-          <div id="rewardList" class="grid grid-cols-2 gap-4"></div>
-
-          <button onclick="closeModal()"
-              class="mt-4 bg-blue-400 px-4 py-2 rounded text-white font-bold">
-              Close
-          </button>
-      </div>
-  </div>
-
-  <!-- MAIN CONTENT -->
-  <div class="max-w-6xl mx-auto px-6 py-10 w-full">
-
-    <!-- USER REWARDS -->
-    <h3 class="text-2xl font-bold mb-4">Your Rewards</h3>
-
-    <!-- PAGINATION CONTROLS -->
-    <div class="flex justify-between items-center mb-3">
-      <button id="prevPage" class="px-3 py-1 bg-gray-300 rounded disabled:opacity-40">Prev</button>
-      <span id="pageIndicator" class="font-bold"></span>
-      <button id="nextPage" class="px-3 py-1 bg-gray-300 rounded disabled:opacity-40">Next</button>
+    <div class="flex flex-wrap gap-4 justify-center">
+      <button onclick="spin(1)"
+              class="flex flex-col items-center bg-amber-400 hover:bg-amber-500 text-white font-bold px-8 py-4 rounded-2xl shadow transition-all hover:scale-105 hover:shadow-lg">
+        <span class="text-2xl mb-1">🎰</span>
+        <span class="text-base">1 Pull</span>
+        <span class="text-xs font-normal opacity-80 mt-0.5">10 points</span>
+      </button>
+      <button onclick="spin(10)"
+              class="flex flex-col items-center bg-sky-500 hover:bg-sky-600 text-white font-bold px-8 py-4 rounded-2xl shadow transition-all hover:scale-105 hover:shadow-lg">
+        <span class="text-2xl mb-1">🎊</span>
+        <span class="text-base">10 Pulls</span>
+        <span class="text-xs font-normal opacity-80 mt-0.5">50 points</span>
+      </button>
     </div>
 
-    <div id="user-rewards-container" class="flex gap-4 flex-wrap transition-all duration-300">
-      {% for ur in user_rewards %}
-        <a href="{{ url_for('reward_detail', reward_id=ur.reward_id) }}" class="block user-reward-card">
-          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center">
+  </div>
+</div>
 
-            {% if ur.Image %}
-              {% if ur.Image.startswith('/static/') %}
-                <img src="{{ ur.Image }}" class="w-full h-24 object-cover rounded">
-              {% else %}
-                <img src="{{ url_for('static', filename=ur.Image) }}" class="w-full h-24 object-cover rounded">
-              {% endif %}
-            {% else %}
-              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
-            {% endif %}
-
-            <div class="mt-2 font-bold text-sm">{{ ur.Name }}</div>
-          </div>
-        </a>
-      {% endfor %}
+<!-- RESULT MODAL -->
+<div id="resultModal" class="hidden fixed inset-0 flex items-center justify-center z-50"
+     style="background: rgba(0,0,0,.45);">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4" style="box-shadow: 0 12px 48px rgba(0,0,0,.2);">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-sky-800">🎉 You Won!</h2>
+      <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
     </div>
+    <div id="rewardList" class="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1"></div>
+    <button onclick="closeModal()"
+            class="mt-5 w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 rounded-xl transition">
+      Keep Going
+    </button>
+  </div>
+</div>
 
-    <!-- ALL REWARDS (GROUPED BY RARITY) -->
-    <h3 class="text-2xl font-bold mt-10 mb-4">All Rewards</h3>
+<!-- MAIN CONTENT -->
+<div class="max-w-6xl mx-auto px-4 pb-12">
 
-    {% set legendary = rewards | selectattr("Weight", "equalto", 1) | list %}
-    {% set epic      = rewards | selectattr("Weight", "in", [2,3]) | list %}
-    {% set rare      = rewards | selectattr("Weight", "in", [4,5,6,7]) | list %}
-    {% set common    = rewards | selectattr("Weight", "ge", 8) | list %}
-
-   
-    {% if legendary %}
-      <h4 class="text-xl font-bold text-yellow-600 mb-2">Legendary</h4>
-      <div class="flex gap-4 flex-wrap mb-6">
-        {% for reward in legendary %}
-          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
-
-            {% if reward.Image %}
-              {% if reward.Image.startswith('/static/') %}
-                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
-              {% else %}
-                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
-              {% endif %}
-            {% else %}
-              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
-            {% endif %}
-
-            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    
-    {% if epic %}
-      <h4 class="text-xl font-bold text-purple-600 mb-2">Epic</h4>
-      <div class="flex gap-4 flex-wrap mb-6">
-        {% for reward in epic %}
-          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
-
-            {% if reward.Image %}
-              {% if reward.Image.startswith('/static/') %}
-                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
-              {% else %}
-                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
-              {% endif %}
-            {% else %}
-              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
-            {% endif %}
-
-            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    
-    {% if rare %}
-      <h4 class="text-xl font-bold text-blue-600 mb-2">Rare</h4>
-      <div class="flex gap-4 flex-wrap mb-6">
-        {% for reward in rare %}
-          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
-
-            {% if reward.Image %}
-              {% if reward.Image.startswith('/static/') %}
-                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
-              {% else %}
-                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
-              {% endif %}
-            {% else %}
-              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
-            {% endif %}
-
-            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    
-    {% if common %}
-      <h4 class="text-xl font-bold text-gray-600 mb-2">Common</h4>
-      <div class="flex gap-4 flex-wrap mb-6">
-        {% for reward in common %}
-          <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center opacity-80 cursor-default">
-
-            {% if reward.Image %}
-              {% if reward.Image.startswith('/static/') %}
-                <img src="{{ reward.Image }}" class="w-full h-24 object-cover rounded">
-              {% else %}
-                <img src="{{ url_for('static', filename=reward.Image) }}" class="w-full h-24 object-cover rounded">
-              {% endif %}
-            {% else %}
-              <img src="{{ url_for('static', filename='placeholder.png') }}" class="w-full h-24 object-cover rounded">
-            {% endif %}
-
-            <div class="mt-2 font-bold text-sm">{{ reward.Name }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <!-- SPIN RESULTS -->
-    <div id="spin-results" class="spin-results mt-6 flex gap-4 flex-wrap"></div>
-
+  <!-- Your Rewards -->
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-bold text-gray-700">Your Rewards</h3>
+    <div class="flex items-center gap-2">
+      <button id="prevPage"
+              class="px-3 py-1 text-sm bg-white border border-sky-200 text-sky-500 rounded-lg disabled:opacity-30 hover:bg-sky-50 transition">
+        ← Prev
+      </button>
+      <span id="pageIndicator" class="text-sm text-gray-500 font-medium"></span>
+      <button id="nextPage"
+              class="px-3 py-1 text-sm bg-white border border-sky-200 text-sky-500 rounded-lg disabled:opacity-30 hover:bg-sky-50 transition">
+        Next →
+      </button>
+    </div>
   </div>
 
-  <style>
-    .spin-results { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; }
-    .reward-card { width:140px; text-align:center; }
-  </style>
+  <div id="user-rewards-container" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3 mb-10">
+    {% for ur in user_rewards %}
+      <a href="{{ url_for('reward_detail', reward_id=ur.reward_id) }}"
+         class="drink-card block bg-white rounded-xl overflow-hidden"
+         style="box-shadow: 0 2px 8px rgba(0,0,0,.07);">
+        <img src="{{ ur.Image if ur.Image and ur.Image.startswith('/static/') else url_for('static', filename=ur.Image if ur.Image else 'placeholder.png') }}"
+             class="w-full aspect-square object-cover" alt="{{ ur.Name }}" />
+        <div class="p-2 text-center text-xs font-semibold text-gray-700 leading-tight">{{ ur.Name }}</div>
+      </a>
+    {% endfor %}
+  </div>
 
-  <!-- page thing which idk what its called and all the logic for the wheel which has killed me  -->
-  <script>
-    function imageUrl(path) {
-      if (!path) return '/static/placeholder.png';
-      if (path.startsWith('/static/') || path.startsWith('http')) return path;
-      return '/static/' + path.replace(/^\/+/, '');
-    }
+  <!-- All Drinks by Rarity -->
+  <h3 class="text-lg font-bold text-gray-700 mb-5">All Drinks</h3>
 
-    function openModalWithRewards(rewards) {
-      const list = document.getElementById("rewardList");
-      list.innerHTML = "";
+  {% set legendary = rewards | selectattr("Weight", "equalto", 1) | list %}
+  {% set epic      = rewards | selectattr("Weight", "in", [2,3]) | list %}
+  {% set rare      = rewards | selectattr("Weight", "in", [4,5,6,7]) | list %}
+  {% set common    = rewards | selectattr("Weight", "ge", 8) | list %}
 
-      rewards.forEach(r => {
-        const item = document.createElement("div");
-        item.className = "flex flex-col items-center";
+  {% for group, label, cls, glow in [
+      (legendary, 'Legendary', 'rarity-legendary', 'glow-legendary'),
+      (epic,      'Epic',      'rarity-epic',      'glow-epic'),
+      (rare,      'Rare',      'rarity-rare',      'glow-rare'),
+      (common,    'Common',    'rarity-common',    '')
+  ] %}
+    {% if group %}
+    <div class="mb-8">
+      <h4 class="font-bold text-base {{ cls }} mb-3 flex items-center gap-2">
+        {% if label == 'Legendary' %}⭐
+        {% elif label == 'Epic' %}💜
+        {% elif label == 'Rare' %}💙
+        {% else %}🩶{% endif %}
+        {{ label }}
+        <span class="text-xs font-normal text-gray-400">({{ group | length }})</span>
+      </h4>
+      <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3">
+        {% for reward in group %}
+        <div class="bg-white rounded-xl overflow-hidden opacity-75 {{ glow }}"
+             style="box-shadow: 0 2px 8px rgba(0,0,0,.07);">
+          <img src="{{ reward.Image if reward.Image and reward.Image.startswith('/static/') else url_for('static', filename=reward.Image if reward.Image else 'placeholder.png') }}"
+               class="w-full aspect-square object-cover" alt="{{ reward.Name }}" />
+          <div class="p-2 text-center text-xs font-semibold text-gray-700 leading-tight">{{ reward.Name }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
 
-        const img = document.createElement("img");
-        img.src = imageUrl(r.Image);
-        img.className = "w-20 h-20 object-cover rounded mb-2";
+</div>
 
-        const name = document.createElement("p");
-        name.className = "font-bold text-sm";
-        name.textContent = r.Name;
+<script>
+  function imageUrl(path) {
+    if (!path) return '/static/placeholder.png';
+    if (path.startsWith('/static/') || path.startsWith('http')) return path;
+    return '/static/' + path.replace(/^\/+/, '');
+  }
 
-        const link = document.createElement("a");
-        link.href = "/reward/" + r.ID;
-        link.textContent = "View details";
-        link.className = "text-xs text-blue-600 hover:underline mt-1";
+  function openModalWithRewards(rewards) {
+    const list = document.getElementById("rewardList");
+    list.innerHTML = "";
+    rewards.forEach(r => {
+      const item = document.createElement("a");
+      item.href = "/reward/" + r.ID;
+      item.className = "flex flex-col items-center bg-sky-50 rounded-xl p-3 hover:bg-sky-100 transition";
+      item.innerHTML = `
+        <img src="${imageUrl(r.Image)}" class="w-16 h-16 object-cover rounded-lg mb-2" />
+        <p class="font-bold text-xs text-gray-800 text-center leading-snug">${r.Name}</p>
+        <span class="text-xs text-sky-500 mt-1">View →</span>
+      `;
+      list.appendChild(item);
+    });
+    document.getElementById("resultModal").classList.remove("hidden");
+  }
 
-        item.appendChild(img);
-        item.appendChild(name);
-        item.appendChild(link);
-        list.appendChild(item);
+  function updatePointsDisplay(remaining) {
+    const el = document.querySelector('.points-display');
+    if (el) el.textContent = remaining;
+  }
+
+  async function spin(amount) {
+    try {
+      const btns = document.querySelectorAll('button[onclick^="spin("]');
+      btns.forEach(b => b.disabled = true);
+      const resp = await fetch("/gacha_spin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ plays: amount })
       });
-
-      document.getElementById("resultModal").classList.remove("hidden");
-    }
-
-    function updatePointsDisplay(remaining) {
-      const el = document.querySelector('.points-display');
-      if (el) el.textContent = 'Points: ' + remaining;
-    }
-
-    async function spin(amount) {
-      try {
-        const btns = document.querySelectorAll('button[onclick^="spin("]');
-        btns.forEach(b => b.disabled = true);
-
-        const resp = await fetch("/gacha_spin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({ plays: amount })
-        });
-
-        const data = await resp.json();
-        if (!data.success) throw new Error(data.message);
-
-        openModalWithRewards(data.rewards);
-        updatePointsDisplay(data.remaining_points);
-
-        // Add new rewards to page 1
-        data.rewards.forEach(r => {
-          const a = document.createElement('a');
-          a.href = "/reward/" + r.ID;
-          a.className = "block user-reward-card";
-
-          a.innerHTML = `
-            <div class="reward-card bg-white rounded-lg shadow p-3 w-40 text-center">
-              <img src="${imageUrl(r.Image)}" class="w-full h-24 object-cover rounded">
-              <div class="mt-2 font-bold text-sm">${r.Name}</div>
-            </div>
-          `;
-
-          allUserRewards.unshift(a);
-        });
-
-        paginateRewards();
-
-      } catch (err) {
-        alert("Spin failed: " + err.message);
-      } finally {
-        const btns = document.querySelectorAll('button[onclick^="spin("]');
-        btns.forEach(b => b.disabled = false);
-      }
-    }
-
-    function closeModal() {
-      document.getElementById("resultModal").classList.add("hidden");
-    }
-
-    // pages
-    let allUserRewards = [];
-    let currentPage = 1;
-    const pageSize = 14;
-
-    function paginateRewards() {
-      const container = document.getElementById("user-rewards-container");
-      container.innerHTML = "";
-
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize;
-
-      const pageItems = allUserRewards.slice(start, end);
-      pageItems.forEach(el => container.appendChild(el));
-
-      document.getElementById("pageIndicator").textContent =
-        `Page ${currentPage} of ${Math.ceil(allUserRewards.length / pageSize)}`;
-
-      document.getElementById("prevPage").disabled = currentPage === 1;
-      document.getElementById("nextPage").disabled = end >= allUserRewards.length;
-    }
-
-    document.getElementById("prevPage").addEventListener("click", () => {
-      if (currentPage > 1) {
-        currentPage--;
-        paginateRewards();
-      }
-    });
-
-    document.getElementById("nextPage").addEventListener("click", () => {
-      if (currentPage < Math.ceil(allUserRewards.length / pageSize)) {
-        currentPage++;
-        paginateRewards();
-      }
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const container = document.getElementById("user-rewards-container");
-      allUserRewards = Array.from(container.children);
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.message);
+      openModalWithRewards(data.rewards);
+      updatePointsDisplay(data.remaining_points);
+      data.rewards.forEach(r => {
+        const a = document.createElement('a');
+        a.href = "/reward/" + r.ID;
+        a.className = "drink-card block bg-white rounded-xl overflow-hidden user-reward-card";
+        a.style.boxShadow = "0 2px 8px rgba(0,0,0,.07)";
+        a.innerHTML = `
+          <img src="${imageUrl(r.Image)}" class="w-full aspect-square object-cover" />
+          <div class="p-2 text-center text-xs font-semibold text-gray-700 leading-tight">${r.Name}</div>
+        `;
+        allUserRewards.unshift(a);
+      });
       paginateRewards();
-    });
-  </script>
+    } catch (err) {
+      alert("Spin failed: " + err.message);
+    } finally {
+      const btns = document.querySelectorAll('button[onclick^="spin("]');
+      btns.forEach(b => b.disabled = false);
+    }
+  }
+
+  function closeModal() {
+    document.getElementById("resultModal").classList.add("hidden");
+  }
+
+  let allUserRewards = [];
+  let currentPage = 1;
+  const pageSize = 14;
+
+  function paginateRewards() {
+    const container = document.getElementById("user-rewards-container");
+    container.innerHTML = "";
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    allUserRewards.slice(start, end).forEach(el => container.appendChild(el));
+    const totalPages = Math.max(1, Math.ceil(allUserRewards.length / pageSize));
+    document.getElementById("pageIndicator").textContent = `${currentPage} / ${totalPages}`;
+    document.getElementById("prevPage").disabled = currentPage === 1;
+    document.getElementById("nextPage").disabled = end >= allUserRewards.length;
+  }
+
+  document.getElementById("prevPage").addEventListener("click", () => {
+    if (currentPage > 1) { currentPage--; paginateRewards(); }
+  });
+  document.getElementById("nextPage").addEventListener("click", () => {
+    if (currentPage < Math.ceil(allUserRewards.length / pageSize)) { currentPage++; paginateRewards(); }
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    allUserRewards = Array.from(document.getElementById("user-rewards-container").children);
+    paginateRewards();
+  });
+</script>
 
 </body>
 </html>

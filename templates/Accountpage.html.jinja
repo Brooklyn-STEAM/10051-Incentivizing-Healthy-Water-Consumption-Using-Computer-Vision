@@ -1,10 +1,23 @@
 <!doctype html>
-<html>
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Drip — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .card { background: white; border-radius: 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+    .stat-card { border-radius: 1.25rem; padding: 1.25rem 1.5rem; }
+    .progress-bar { height: 6px; border-radius: 999px; background: #e0f0ff; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #38bdf8, #0ea5e9); transition: width .6s ease; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .bar-wrap { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; height: 80px; }
+    .bar-inner { border-radius: 6px 6px 0 0; background: #38bdf8; transition: height .5s ease; min-height: 2px; }
+    .bar-inner.met { background: linear-gradient(180deg, #0ea5e9, #0284c7); }
+    .tag { font-size: .7rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  </style>
 </head>
 
 <body class="bg-gradient-to-b to-white min-h-screen flex items-center justify-center p-6">
@@ -15,60 +28,342 @@
 <div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-75 w-80 -mt-50">
 
 
+ <div class="h-35 w-35 rounded-full bg-white flex-center items-center justify-center text-center text-sm pt-12 ">
+  Edit Profile
+  </div>
 
-  <div class="profile-pic-container">
-  <form method="POST" enctype="multipart/form-data">
-    
-    <label for="fileInput">
-      <img class="profile-pic h-35 w-35 rounded-full bg-white"
-           src="{{ url_for('static', filename='profile_pics/' ~ (current_user.profile_image or 'default.jpg')) }}"
-           width="100">
-    </label>
-
-    <input type="file" id="fileInput" name="picture" hidden
-           onchange="this.form.submit()">
-
-  </form>
-</div>
     {%if not current_user.is_authenticated %}
  <a href="/login" class=" px-7 gap-2"></a>
     {%else%}
-<h1 class="text-center font-bold text-2xl text-white">Hi, {{current_user.name}}</h1>
+<h1 class="text-center font-bold text-2xl text-white">Hi, {{current_user.username}}</h1>
     {%endif%}
 
- </div>
+  </div>
 
-<div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-120 w-100 -mt-30 ml-30">
+  <!-- ── MIDDLE ROW ── -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
+    <!-- Hydration Progress Chart (7 days) -->
+    <div class="card p-5 md:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-gray-700">Hydration Progress</h2>
+        <span class="text-xs text-gray-400">Last 7 Days</span>
+      </div>
+      <canvas id="progressChart" height="110"></canvas>
+      <div class="flex items-center gap-4 mt-3 text-xs text-gray-400">
+        <span class="flex items-center gap-1"><span style="display:inline-block;width:24px;height:2px;background:#38bdf8;border-radius:2px;"></span> Actual</span>
+        <span class="flex items-center gap-1"><span style="display:inline-block;width:24px;height:2px;background:#e0f0ff;border-radius:2px;border:1px dashed #94a3b8;"></span> Goal</span>
+      </div>
+    </div>
 
-<h1 class="font-bold text-2xl text-white">
+     <!-- Calendar -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <button id="prevMonth" class="text-sky-400 hover:text-sky-600 text-lg px-2">‹</button>
+        <h2 class="font-bold text-gray-700" id="calTitle"></h2>
+        <button id="nextMonth" class="text-sky-400 hover:text-sky-600 text-lg px-2">›</button>
+      </div>
+      <div class="grid grid-cols-7 text-center text-xs text-gray-400 font-semibold mb-2">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+      </div>
+      <div id="calGrid" class="grid grid-cols-7 text-center text-sm gap-y-1"></div>
+      <div class="flex items-center gap-2 mt-4 text-xs text-gray-400">
+       <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs">💧</span>
+        Goal Met
+      </div>
+    </div>
 
-Water 
-<br>
-Consummtion
-</h1>
- <div class="w-80 h-100 bg-white rounded-xl">
-<span class="text-blue-200 text-center font-bold"></span>
- </div>
- </div>
+  </div>
 
+  <!-- ── BOTTOM ROW ── -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-<div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-75 w-90 -mt-35">
+    <!-- Recent Activity -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-gray-700">Recent Activity</h2>
+        <a href="/tracker" class="text-xs text-sky-400 hover:underline">View All</a>
+      </div>
+      {% if recent %}
+        <ul class="flex flex-col gap-3">
+          {% for r in recent %}
+          <li class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">
+                {% if r.Points > 0 %}🏆
+                {% elif r.Points < 0 %}🎰
+                {% else %}💧{% endif %}
+              </span>
+              <div>
+                <p class="text-sm font-medium text-gray-700">
+                  {% if r.Points > 0 %}Goal bonus earned!
+                  {% elif r.Points < 0 %}Gacha spin
+                  {% elif r.Cups > 0 %}Logged {{ "%.1f"|format(r.Cups) }} cups
+                  {% else %}Activity{% endif %}
+                </p>
+                <p class="text-xs text-gray-400">{{ r.Timestamp.strftime('%b %d, %I:%M %p') if r.Timestamp else '' }}</p>
+              </div>
+            </div>
+            {% if r.Points != 0 %}
+              <span class="tag {% if r.Points > 0 %}bg-green-100 text-green-600{% else %}bg-red-100 text-red-400{% endif %}">
+                {% if r.Points > 0 %}+{% endif %}{{ r.Points }} pts
+              </span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-gray-400 text-center mt-6">No activity yet — log some water!</p>
+      {% endif %}
+    </div>
 
-<h1 class="text-center font-bold text-2xl text-white">Daily Goal</h1>
-<p class="text-sky-700 font-semibold text-xl">
-           <span class="font-bold">{{ daily_goal }}</span> cups
-        </p>
+    <!-- Health Summary -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-gray-700">Health Summary</h2>
+        <a href="/healthdata" class="text-xs text-sky-400 hover:underline">Edit</a>
+      </div>
+      {% if health %}
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-sky-50 rounded-xl p-3 text-center">
+          <p class="text-xl font-bold text-sky-700">{{ health.Weight | int }}</p>
+          <p class="text-xs text-gray-400">lbs</p>
+        </div>
+        <div class="bg-sky-50 rounded-xl p-3 text-center">
+          <p class="text-xl font-bold text-sky-700">{{ health.Age }}</p>
+          <p class="text-xs text-gray-400">Age</p>
+        </div>
+        <div class="bg-sky-50 rounded-xl p-3 text-center">
+          <p class="text-sm font-bold text-sky-700 capitalize">{{ health.Sex or '—' }}</p>
+          <p class="text-xs text-gray-400">Sex</p>
+        </div>
+        <div class="bg-sky-50 rounded-xl p-3 text-center">
+          <p class="text-sm font-bold text-sky-700 capitalize">{{ (health.Active or '—').replace('_',' ') }}</p>
+          <p class="text-xs text-gray-400">Activity</p>
+        </div>
+      </div>
+      <div class="mt-3 bg-sky-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-400">Recommended Daily Intake</p>
+        <p class="text-lg font-bold text-sky-700">{{ water_oz_goal | round(0) | int }} oz <span class="text-sm font-normal text-sky-400">({{ daily_goal }} cups)</span></p>
+      </div>
+      {% else %}
+      <div class="text-center mt-6">
+        <p class="text-sm text-gray-400 mb-3">No health data yet.</p>
+        <a href="/healthdata" class="bg-sky-500 text-white text-sm px-4 py-2 rounded-xl hover:bg-sky-600 transition">Set Up Profile</a>
+      </div>
+      {% endif %}
+    </div>
 
+    <!-- Gacha / Spin -->
+    <div class="card p-5 flex flex-col items-center text-center">
+      <h2 class="font-bold text-gray-700 mb-1 self-start">Gacha Spin</h2>
+      <p class="text-xs text-gray-400 self-start mb-4">Spin the wheel and win a random drink!</p>
 
-<br>
-<div class="w-70 h-85 bg-white rounded-none">
-<span class="text-blue-200 text-center font-bold"></span>
+      <!-- Simple spinner visual -->
+      <div id="wheel" class="relative w-28 h-28 rounded-full mb-4 flex items-center justify-center transition-transform"
+           style="background: conic-gradient(#f87171 0deg 51deg, #fb923c 51deg 102deg, #fbbf24 102deg 153deg, #4ade80 153deg 204deg, #38bdf8 204deg 255deg, #818cf8 255deg 306deg, #f472b6 306deg 360deg); box-shadow: 0 4px 20px rgba(56,189,248,.3);">
+        <div class="w-8 h-8 rounded-full bg-white shadow-inner"></div>
+      </div>
+
+      <p class="text-xs text-gray-400 mb-1">Cost: <span class="text-amber-500 font-bold">10 pts</span> for 1 spin</p>
+      <p class="text-sm text-gray-500 mb-3">You have <span class="font-bold text-amber-600">{{ total_points }}</span> points</p>
+
+      <a href="/wheelofdrinks"
+         class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-4 rounded-xl transition text-sm">
+        Go to Spin Wheel
+      </a>
+    </div>
+  <!--  REMINDERS ROW ── -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+
+  <!-- Reminders -->
+  <div class="card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🔔</span>
+        <h2 class="font-bold text-gray-700">Reminders</h2>
+      </div>
+      <button onclick="document.getElementById('addReminderForm').classList.toggle('hidden')"
+              class="text-xs text-sky-500 hover:text-sky-700 font-semibold">+ Add</button>
+    </div>
+
+    <!-- Add reminder form (hidden by default) -->
+    <div id="addReminderForm" class="hidden mb-4 bg-sky-50 rounded-xl p-3">
+      <form method="POST" action="/reminders/add">
+        <div class="flex flex-col gap-2">
+          <input type="text" name="label" placeholder="Reminder name (e.g. Drink water)"
+                 class="border border-sky-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300" required>
+          <input type="time" name="time"
+                 class="border border-sky-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300" required>
+          <button type="submit"
+                  class="bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold py-1.5 rounded-lg transition">
+            Save Reminder
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% if reminders %}
+      <ul class="flex flex-col gap-3">
+        {% for r in reminders %}
+        <li class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-base text-gray-400">⏱</span>
+            <div>
+              <p class="text-sm font-medium text-gray-700">{{ r.label }}</p>
+              <p class="text-xs text-gray-400">{{ r.time }}</p>
+            </div>
+          </div>
+          <!-- Toggle -->
+          <form method="POST" action="/reminders/toggle/{{ r.id }}">
+            <button type="submit"
+                    class="relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none
+                           {{ 'bg-sky-500' if r.enabled else 'bg-gray-200' }}">
+              <span class="inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform
+                           {{ 'translate-x-6' if r.enabled else 'translate-x-1' }}"></span>
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-gray-400 text-center mt-6">No reminders yet — add one above!</p>
+    {% endif %}
+
+    <p class="text-xs text-sky-400 mt-4 text-center">📧 Active reminders are sent to your email</p>
+  </div>
+
+</div>
+  </div>
+
 </div>
 
 
+<!-- ── CHARTS JS ── -->
+<script>
+  // 7-day hydration line chart
+  const labels = [{% for p in progress %}"{{ p.label }}"{% if not loop.last %},{% endif %}{% endfor %}];
+  const actual = [{% for p in progress %}{{ p.cups }}{% if not loop.last %},{% endif %}{% endfor %}];
+  const goalVal = {{ daily_goal }};
+
+  new Chart(document.getElementById('progressChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Goal',
+          data: labels.map(() => goalVal),
+          borderColor: '#bae6fd',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        },
+        {
+          label: 'Actual',
+          data: actual,
+          borderColor: '#0ea5e9',
+          backgroundColor: 'rgba(56,189,248,.12)',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#0ea5e9',
+          pointRadius: 4,
+          fill: true,
+          tension: 0.4,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,.04)' },
+          ticks: { font: { size: 11 } }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
+        }
+      }
+    }
+  });
+
+  // Gentle wheel spin animation on hover
+  const wheel = document.getElementById('wheel');
+  wheel.addEventListener('mouseenter', () => {
+    wheel.style.transform = 'rotate(360deg)';
+    wheel.style.transition = 'transform 1s ease';
+  });
+  wheel.addEventListener('mouseleave', () => {
+    wheel.style.transform = 'rotate(0deg)';
+    wheel.style.transition = 'none';
+  });
 
 
+  // ── CALENDAR ──
+const goalMetDays = {{ goal_met_days | tojson }};
+const todayDate = new Date();
+let viewYear = todayDate.getFullYear();
+let viewMonth = todayDate.getMonth(); // 0-indexed
 
+const monthNames = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
 
- </body>
+function renderCalendar(year, month) {
+  document.getElementById('calTitle').textContent = monthNames[month] + ' ' + year;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const blank = document.createElement('div');
+    blank.className = 'py-1 text-gray-200';
+    blank.textContent = '';
+    grid.appendChild(blank);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'py-1 flex items-center justify-center';
+
+    const isToday = (d === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear());
+    const isGoalMet = goalMetDays.includes(d) && month === todayDate.getMonth() && year === todayDate.getFullYear();
+
+    let inner = document.createElement('span');
+    inner.textContent = d;
+
+    if (isGoalMet) {
+      inner.className = 'w-8 h-8 flex items-center justify-center rounded-full bg-sky-500 text-white font-bold text-xs';
+    } else if (isToday) {
+      inner.className = 'w-8 h-8 flex items-center justify-center rounded-full border-2 border-sky-400 text-sky-600 font-bold text-xs';
+    } else {
+      inner.className = 'w-8 h-8 flex items-center justify-center text-gray-600 text-xs hover:bg-sky-50 rounded-full';
+    }
+
+    cell.appendChild(inner);
+    grid.appendChild(cell);
+  }
+}
+
+document.getElementById('prevMonth').addEventListener('click', () => {
+  viewMonth--;
+  if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  renderCalendar(viewYear, viewMonth);
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  viewMonth++;
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  renderCalendar(viewYear, viewMonth);
+});
+
+renderCalendar(viewYear, viewMonth);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leaderboard — Daily Drip</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .card { background: white; border-radius: 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+
+    .row-self { background: linear-gradient(90deg, #e0f2fe, #f0f9ff); }
+
+    /* podium heights */
+    .pod-1 { height: 110px; }
+    .pod-2 { height: 80px; }
+    .pod-3 { height: 60px; }
+  </style>
+</head>
+<body class="min-h-screen" style="background: #f0f7ff;">
+
+{% include "components/navbar.html.jinja" %}
+
+<div class="max-w-2xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <h1 class="text-2xl font-bold text-sky-800">💧 Leaderboard</h1>
+    <p class="text-sm text-sky-400 mt-1">Top 10 hydrators of all time</p>
+  </div>
+
+  {% if leaderboard | length >= 3 %}
+  <!-- Podium -->
+  <div class="flex items-end justify-center gap-3 mb-8">
+
+    <!-- 2nd place -->
+    <div class="flex flex-col items-center gap-2">
+      <img src="{{ url_for('static', filename='profile_pics/' ~ (leaderboard[1].profile_image or 'default.jpg')) }}"
+           class="w-14 h-14 rounded-full object-cover ring-2 ring-gray-300" />
+      <p class="text-xs font-bold text-gray-600 text-center max-w-[72px] truncate">{{ leaderboard[1].name }}</p>
+      <p class="text-xs text-gray-400">{{ leaderboard[1].total_cups }} cups</p>
+      <div class="pod-2 w-20 bg-gray-200 rounded-t-xl flex items-center justify-center">
+        <span class="text-2xl">🥈</span>
+      </div>
+    </div>
+
+    <!-- 1st place -->
+    <div class="flex flex-col items-center gap-2">
+      <img src="{{ url_for('static', filename='profile_pics/' ~ (leaderboard[0].profile_image or 'default.jpg')) }}"
+           class="w-16 h-16 rounded-full object-cover ring-4 ring-amber-300" />
+      <p class="text-xs font-bold text-amber-700 text-center max-w-[80px] truncate">{{ leaderboard[0].name }}</p>
+      <p class="text-xs text-amber-400">{{ leaderboard[0].total_cups }} cups</p>
+      <div class="pod-1 w-24 rounded-t-xl flex items-center justify-center"
+           style="background: linear-gradient(180deg, #fef3c7, #fbbf24);">
+        <span class="text-3xl">👑</span>
+      </div>
+    </div>
+
+    <!-- 3rd place -->
+    <div class="flex flex-col items-center gap-2">
+      <img src="{{ url_for('static', filename='profile_pics/' ~ (leaderboard[2].profile_image or 'default.jpg')) }}"
+           class="w-14 h-14 rounded-full object-cover ring-2 ring-orange-200" />
+      <p class="text-xs font-bold text-gray-600 text-center max-w-[72px] truncate">{{ leaderboard[2].name }}</p>
+      <p class="text-xs text-gray-400">{{ leaderboard[2].total_cups }} cups</p>
+      <div class="pod-3 w-20 rounded-t-xl flex items-center justify-center"
+           style="background: linear-gradient(180deg, #fed7aa, #fb923c);">
+        <span class="text-2xl">🥉</span>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+  <!-- Full list -->
+  <div class="card overflow-hidden">
+    {% for entry in leaderboard %}
+    <div class="flex items-center gap-4 px-5 py-4
+                {% if entry.is_self %}row-self{% endif %}
+                {% if not loop.last %}border-b border-sky-50{% endif %}">
+
+      <!-- Rank -->
+      <div class="w-8 text-center flex-shrink-0">
+        {% if entry.rank == 1 %}
+          <span class="text-xl">👑</span>
+        {% elif entry.rank == 2 %}
+          <span class="text-xl">🥈</span>
+        {% elif entry.rank == 3 %}
+          <span class="text-xl">🥉</span>
+        {% else %}
+          <span class="text-sm font-bold text-gray-400">#{{ entry.rank }}</span>
+        {% endif %}
+      </div>
+
+      <!-- PFP -->
+      <img src="{{ url_for('static', filename='profile_pics/' ~ (entry.profile_image or 'default.jpg')) }}"
+           class="w-10 h-10 rounded-full object-cover ring-1 ring-sky-100 flex-shrink-0" />
+
+      <!-- Name -->
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-sm text-gray-800 truncate">
+          {{ entry.name }}
+          {% if entry.is_self %}
+            <span class="text-xs font-normal text-sky-400 ml-1">· you</span>
+          {% endif %}
+        </p>
+        <p class="text-xs text-gray-400">@{{ entry.username }}</p>
+      </div>
+
+      <!-- Cups -->
+      <div class="text-right flex-shrink-0">
+        <p class="font-bold
+           {% if entry.rank == 1 %}text-amber-500
+           {% elif entry.rank == 2 %}text-gray-500
+           {% elif entry.rank == 3 %}text-orange-400
+           {% else %}text-sky-600{% endif %}">
+          {{ entry.total_cups }}
+        </p>
+        <p class="text-xs text-gray-400">cups total</p>
+      </div>
+
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-sm text-gray-400">No data yet — start logging water! 💧</div>
+    {% endfor %}
+  </div>
+
+</div>
+</body>
+</html>
