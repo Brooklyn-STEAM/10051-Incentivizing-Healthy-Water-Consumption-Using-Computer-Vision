@@ -4,6 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <style>
+    /* smooth hover feel */
+    .smooth {
+      transition: all 0.2s ease;
+    }
+
+    .hover-lift:hover {
+      transform: translateY(-2px);
+    }
+
+    .hover-grow:hover {
+      transform: scale(1.03);
+    }
+
+    .hover-soft:hover {
+      box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
+    }
+
+    .hover-text:hover {
+      letter-spacing: 0.3px;
+    }
+  </style>
 </head>
 
 <body class="bg-white min-h-screen">
@@ -14,7 +37,7 @@
   {% if messages %}
     <div class="max-w-4xl mx-auto mt-6">
       {% for message in messages %}
-        <div class="bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded mb-2 text-sm">
+        <div class="bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded mb-2 text-sm smooth hover-soft hover-lift">
           {{ message }}
         </div>
       {% endfor %}
@@ -25,31 +48,35 @@
 <div class="flex justify-center mt-12">
 
   <!-- Tracker Card -->
-  <div class="bg-sky-100 rounded-3xl p-12 w-[950px] shadow-lg border border-sky-200">
+  <div class="bg-sky-100 rounded-3xl p-12 w-[950px] shadow-lg border border-sky-200 smooth hover-soft hover-lift">
 
     <!-- Title -->
-    <h1 class="text-center text-sky-700 text-4xl font-semibold mb-4">
+    <h1 class="text-center text-sky-700 text-4xl font-semibold mb-4 smooth hover-text hover-grow">
       Daily Water Tracker
     </h1>
 
-<!-- ⭐ DAILY GOAL / DRANK TODAY / REMAINING ⭐ -->
+    <!-- DAILY STATS -->
     <div class="text-center mb-10">
-      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm">
-        <p class="text-sky-700 font-semibold text-xl">
+      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm smooth hover-soft hover-grow">
+
+        <p class="text-sky-700 font-semibold text-xl smooth hover-text">
           Daily Goal: <span class="font-bold">{{ daily_goal }}</span> cups
         </p>
-        <p class="text-sky-700 font-semibold text-xl mt-1">
+
+        <p class="text-sky-700 font-semibold text-xl mt-1 smooth hover-text">
           Drank Today: <span class="font-bold">{{ cups_drank }}</span> cups
         </p>
-        <p class="text-sky-700 font-semibold text-xl mt-1">
+
+        <p class="text-sky-700 font-semibold text-xl mt-1 smooth hover-text">
           Remaining: <span class="font-bold">{{ cups_left }}</span> cups
         </p>
+
       </div>
     </div>
 
-    <!-- Points Display -->
+    <!-- POINTS -->
     <div class="text-center mb-10">
-      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm">
+      <div class="inline-block bg-white border border-sky-300 px-6 py-3 rounded-xl shadow-sm smooth hover-soft hover-grow">
         <span class="text-sky-700 font-semibold text-xl">Your Points:</span>
         <span class="text-sky-600 font-bold text-2xl ml-2">{{ total_points }}</span>
       </div>
@@ -57,36 +84,38 @@
 
     <!-- WEEKLY DROPS -->
     {% for day in days %}
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 smooth hover-lift">
 
       <!-- Day Label -->
-      <div class="bg-white text-sky-800 px-6 py-3 rounded-lg w-40 text-center font-medium text-lg border border-white">
+      <div class="bg-white text-sky-800 px-6 py-3 rounded-lg w-40 text-center font-medium text-lg border border-white smooth hover-soft hover-grow">
         {{ day }}
       </div>
 
       <!-- Drops -->
       <div class="flex gap-3">
+
         {% for i in range(8) %}
           {% set drop_value = tracker_data[day] - i %}
 
           {% if drop_value >= 1 %}
-            <!-- Full drop -->
-            <svg class="w-9 h-9" viewBox="0 0 24 24" fill="#7DD3FC">
+            <svg class="w-9 h-9 smooth hover-grow" viewBox="0 0 24 24" fill="#7DD3FC">
               <path d="M12 2C12 2 4 10 4 16C4 20.418 7.582 24 12 24C16.418 24 20 20.4183 20 16C20 10 12 2 12 2Z"/>
             </svg>
 
           {% elif drop_value > 0 %}
-            <!-- Partial drop -->
             {% set fraction = drop_value %}
-            <svg class="w-9 h-9" viewBox="0 0 24 24">
+            <svg class="w-9 h-9 smooth hover-grow" viewBox="0 0 24 24">
               <path d="M12 2C12 2 4 10 4 16C4 20.418 7.582 24 12 24C16.418 24 20 20.4183 20 16C20 10 12 2 12 2Z"
                     fill="none" stroke="#93C5FD" stroke-width="2"/>
-               <rect x="4" y="{{ 24 - 20*fraction }}" width="16" height="{{ 20*fraction }}" fill="#7DD3FC"/>
+              <rect x="4"
+                    y="{{ 24 - 20*fraction }}"
+                    width="16"
+                    height="{{ 20*fraction }}"
+                    fill="#7DD3FC"/>
             </svg>
 
           {% else %}
-            <!-- Empty -->
-            <svg class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="#BFDBFE" stroke-width="2">
+            <svg class="w-9 h-9 opacity-50 smooth hover-grow hover:opacity-80" viewBox="0 0 24 24" fill="none" stroke="#BFDBFE" stroke-width="2">
               <path d="M12 2C12 2 4 10 4 16C4 20.418 7.582 24 12 24C16.418 24 20 20.4183 20 16C20 10 12 2 12 2Z"/>
             </svg>
           {% endif %}
@@ -98,24 +127,26 @@
     </div>
     {% endfor %}
 
+    <!-- ADD DRINK -->
     <div class="mt-12 border-t pt-8 text-center">
 
-      <h2 class="text-sky-700 text-xl font-semibold mb-6">Add a Drink</h2>
+      <h2 class="text-sky-700 text-xl font-semibold mb-6 smooth hover-text">
+        Add a Drink
+      </h2>
 
-      <!-- 📸 Camera Button -->
       <a href="{{ url_for('camera') }}"
-        class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition inline-block">
+        class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition smooth hover-lift hover-grow inline-block">
         Take Photo
       </a>
 
-      <!-- ✍️ Manual Option -->
       <div class="mt-6">
 
-        <p class="text-sky-600 text-sm mb-2 font-medium">
+        <p class="text-sky-600 text-sm mb-2 font-medium smooth hover-text">
           or do it manually
         </p>
 
-        <form method="POST" action="{{ url_for('add_drink') }}" class="flex justify-center items-center gap-3">
+        <form method="POST" action="{{ url_for('add_drink') }}"
+              class="flex justify-center items-center gap-3">
 
           <input 
             type="number"
@@ -123,12 +154,12 @@
             min="0"
             step="0.1"
             placeholder="oz"
-            class="w-28 px-4 py-2 rounded-lg border border-sky-300 text-center"
+            class="w-28 px-4 py-2 rounded-lg border border-sky-300 text-center smooth hover-grow focus:outline-none"
           />
 
           <button 
             type="submit"
-            class="bg-white border border-sky-400 text-sky-600 hover:bg-sky-50 px-4 py-2 rounded-lg font-medium transition">
+            class="bg-white border border-sky-400 text-sky-600 hover:bg-sky-50 px-4 py-2 rounded-lg font-medium transition smooth hover-lift hover-grow">
             Add
           </button>
 

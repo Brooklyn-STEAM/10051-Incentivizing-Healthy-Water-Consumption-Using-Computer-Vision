@@ -46,7 +46,10 @@ html, body {
 
     <div class="p-4 border-b font-bold text-blue-600 flex justify-between">
         🧭 Directions
-        <button onclick="document.getElementById('directions-panel').classList.add('hidden')">✖</button>
+
+        <button onclick="document.getElementById('directions-panel').classList.add('hidden')">
+            ✖
+        </button>
     </div>
 
     <div id="directions-list" class="p-4 text-sm space-y-3"></div>
@@ -56,7 +59,14 @@ html, body {
 <div id="start-modal"
      class="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30">
 
-    <div class="bg-white p-5 rounded-xl shadow-lg w-80">
+    <div class="bg-white p-5 rounded-xl shadow-lg w-80 relative">
+
+        <!-- CLOSE BUTTON -->
+        <button id="close-start-modal"
+                class="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl">
+            ✖
+        </button>
+
         <div class="font-bold text-blue-600 mb-3">
             📍 Set Start Location
         </div>
@@ -72,7 +82,7 @@ html, body {
     </div>
 </div>
 
-<!-- MINI BUTTON -->
+<!-- MINI REOPEN BUTTON -->
 <div id="start-mini" class="hidden fixed bottom-5 right-5 z-[9999]">
     <button id="reopen-start"
             class="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-xl">
@@ -92,10 +102,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const map = L.map('map').setView([40.7128, -74.0060], 12);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap & CARTO',
-        maxZoom: 20
-    }).addTo(map);
+    L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        {
+            attribution: '&copy; OpenStreetMap & CARTO',
+            maxZoom: 20
+        }
+    ).addTo(map);
 
     const fountainIcon = L.icon({
         iconUrl: "/static/water-bottle.png",
@@ -111,8 +124,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const startModal = document.getElementById("start-modal");
     const startMini = document.getElementById("start-mini");
     const reopenBtn = document.getElementById("reopen-start");
+    const closeStartModal = document.getElementById("close-start-modal");
 
     function loadFountains() {
+
         fetch("/get-water-locations")
         .then(res => res.json())
         .then(data => {
@@ -121,20 +136,30 @@ document.addEventListener("DOMContentLoaded", function () {
             markers = [];
 
             data.forEach(f => {
-                const marker = L.marker([f.lat, f.lng], { icon: fountainIcon }).addTo(map);
+
+                const marker = L.marker(
+                    [f.lat, f.lng],
+                    { icon: fountainIcon }
+                ).addTo(map);
 
                 marker.bindPopup(`
                     <b>💧 ${f.name}</b><br>
                     ${f.address}<br><br>
 
                     <button onclick="routeTo(${f.lat}, ${f.lng}, 'walking')"
-                        class="bg-blue-500 text-white px-2 py-1 rounded w-full mb-1">🚶 Walk</button>
+                        class="bg-blue-500 text-white px-2 py-1 rounded w-full mb-1">
+                        🚶 Walk
+                    </button>
 
                     <button onclick="routeTo(${f.lat}, ${f.lng}, 'cycling')"
-                        class="bg-blue-500 text-white px-2 py-1 rounded w-full mb-1">🚲 Bike</button>
+                        class="bg-blue-500 text-white px-2 py-1 rounded w-full mb-1">
+                        🚲 Bike
+                    </button>
 
                     <button onclick="routeTo(${f.lat}, ${f.lng}, 'driving')"
-                        class="bg-blue-500 text-white px-2 py-1 rounded w-full">🚗 Drive</button>
+                        class="bg-blue-500 text-white px-2 py-1 rounded w-full">
+                        🚗 Drive
+                    </button>
                 `);
 
                 markers.push(marker);
@@ -144,19 +169,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
     loadFountains();
 
+    // SET START LOCATION
     document.getElementById("set-start").onclick = () => {
-        const address = document.getElementById("start-location").value;
-        if (!address) return alert("Enter location");
 
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+        const address = document.getElementById("start-location").value;
+
+        if (!address) {
+            return alert("Enter location");
+        }
+
+        fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+        )
         .then(res => res.json())
         .then(data => {
 
-            if (!data.length) return alert("Not found");
+            if (!data.length) {
+                return alert("Location not found");
+            }
 
-            startCoords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+            startCoords = [
+                parseFloat(data[0].lat),
+                parseFloat(data[0].lon)
+            ];
 
-            if (userMarker) map.removeLayer(userMarker);
+            if (userMarker) {
+                map.removeLayer(userMarker);
+            }
 
             userMarker = L.marker(startCoords)
                 .addTo(map)
@@ -165,24 +204,42 @@ document.addEventListener("DOMContentLoaded", function () {
 
             map.setView(startCoords, 14);
 
+            // HIDE MODAL
             startModal.classList.add("hidden");
+
+            // SHOW MINI BUTTON
             startMini.classList.remove("hidden");
         });
     };
 
+    // REOPEN MODAL
     reopenBtn.onclick = () => {
         startModal.classList.remove("hidden");
     };
 
+    // CLOSE MODAL WITH X
+    closeStartModal.onclick = () => {
+        startModal.classList.add("hidden");
+        startMini.classList.remove("hidden");
+    };
+
+    // ROUTING FUNCTION
     window.routeTo = function(lat, lng, mode) {
 
-        if (!startCoords) return alert("Set start first");
+        if (!startCoords) {
+            return alert("Set start first");
+        }
 
         const panel = document.getElementById("directions-panel");
         const container = document.getElementById("directions-list");
 
         panel.classList.remove("hidden");
-        container.innerHTML = `<div class="p-2 bg-blue-50 text-blue-700">Loading route...</div>`;
+
+        container.innerHTML = `
+            <div class="p-2 bg-blue-50 text-blue-700">
+                Loading route...
+            </div>
+        `;
 
         const profile =
             mode === "walking" ? "mapbox/walking" :
@@ -200,6 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         fetch(url)
         .then(async (res) => {
+
             const data = await res.json();
 
             console.log("STATUS:", res.status);
@@ -214,18 +272,29 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(data => {
 
             if (!data.routes || data.routes.length === 0) {
-                container.innerHTML = "<div class='text-red-600'>No route found</div>";
+
+                container.innerHTML = `
+                    <div class='text-red-600'>
+                        No route found
+                    </div>
+                `;
+
                 return;
             }
 
             const route = data.routes[0];
             const coords = route.geometry.coordinates;
 
-            if (routeLayer) map.removeLayer(routeLayer);
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+            }
 
             routeLayer = L.polyline(
                 coords.map(c => [c[1], c[0]]),
-                { color: "#1d4ed8", weight: 5 }
+                {
+                    color: "#1d4ed8",
+                    weight: 5
+                }
             ).addTo(map);
 
             map.fitBounds(routeLayer.getBounds());
@@ -238,6 +307,7 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
 
             route.legs[0].steps.forEach((step, i) => {
+
                 container.innerHTML += `
                     <div class="p-2 border-l-4 border-blue-500 bg-blue-50 rounded mb-2">
                         <b>${i + 1}. ${step.maneuver.instruction}</b><br>
@@ -245,11 +315,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                 `;
             });
-
         })
         .catch(err => {
+
             console.error("ROUTE ERROR:", err);
-            container.innerHTML = `<div class="text-red-600">${err.message}</div>`;
+
+            container.innerHTML = `
+                <div class="text-red-600">
+                    ${err.message}
+                </div>
+            `;
         });
     };
 
