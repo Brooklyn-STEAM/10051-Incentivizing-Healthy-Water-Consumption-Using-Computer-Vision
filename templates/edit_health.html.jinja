@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <title>Edit Health Profile</title>
+</head>
+
+<body class="bg-sky-50 min-h-screen">
+
+    <!-- NAVBAR -->
+    {% include "components/navbar.html.jinja" %}
+
+    <!-- PAGE -->
+    <div class="md:ml-64 p-6">
+
+        <!-- FLASH MESSAGES -->
+        {% for message in get_flashed_messages() %}
+            <div class="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {{ message }}
+            </div>
+        {% endfor %}
+
+        <!-- CARD -->
+        <div class="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl p-8">
+
+            <!-- HEADER -->
+            <div class="flex items-center justify-between mb-8">
+
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        Edit Health Profile
+                    </h1>
+
+                    <p class="text-gray-500 mt-1">
+                        Update your water intake information
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- FORM -->
+            <form method="POST"
+                  action="{{ url_for('health_data') }}"
+                  class="space-y-8">
+
+                <!-- AGE + WEIGHT -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- AGE -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Age
+                        </label>
+
+                        <input
+                            type="date"
+                            name="Age"
+                            id="birthday"
+                            required
+                            class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-700"
+                        />
+                    </div>
+
+                    <!-- WEIGHT -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Weight (lbs)
+                        </label>
+
+                        <input
+                            type="number"
+                            name="Weight"
+                            id="weight"
+                            required
+                            placeholder="Enter your weight"
+                            value="{{ data.Weight if data else '' }}"
+                            class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-700"
+                        />
+                    </div>
+
+                </div>
+
+                <!-- SEX -->
+                <div>
+
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        Sex
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Sex" value="female" class="mr-2"
+                                   {% if data and data.Sex == "female" %}checked{% endif %}>
+                            Female
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Sex" value="male" class="mr-2"
+                                   {% if data and data.Sex == "male" %}checked{% endif %}>
+                            Male
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Sex" value="prefer_not" class="mr-2"
+                                   {% if data and data.Sex == "prefer_not" %}checked{% endif %}>
+                            Prefer not to say
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- ACTIVITY -->
+                <div>
+
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        Activity Level
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Active" value="not_active" class="mr-2"
+                                   {% if data and data.Active == "not_active" %}checked{% endif %}>
+                            Not very active
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Active" value="moderate" class="mr-2"
+                                   {% if data and data.Active == "moderate" %}checked{% endif %}>
+                            Moderately active
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Active" value="very_active" class="mr-2"
+                                   {% if data and data.Active == "very_active" %}checked{% endif %}>
+                            Very active
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- DAILY EXERCISE -->
+                <div>
+
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        Daily Exercise
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Daily Excersize" value="0_30" class="mr-2"
+                                   {% if data and data["Daily Excersize"] == "0_30" %}checked{% endif %}>
+                            0–30 minutes
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Daily Excersize" value="30_60" class="mr-2"
+                                   {% if data and data["Daily Excersize"] == "30_60" %}checked{% endif %}>
+                            30–60 minutes
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Daily Excersize" value="1_2" class="mr-2"
+                                   {% if data and data["Daily Excersize"] == "1_2" %}checked{% endif %}>
+                            1–2 hours
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Daily Excersize" value="2_plus" class="mr-2"
+                                   {% if data and data["Daily Excersize"] == "2_plus" %}checked{% endif %}>
+                            2+ hours
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- WEATHER -->
+                <div>
+
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        Climate
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Climate" value="cold" class="mr-2"
+                                   {% if data and data["Local Weather"] == "cold" %}checked{% endif %}>
+                            Cold
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Climate" value="mild" class="mr-2"
+                                   {% if data and data["Local Weather"] == "mild" %}checked{% endif %}>
+                            Mild
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="radio" name="Climate" value="hot" class="mr-2"
+                                   {% if data and data["Local Weather"] == "hot" %}checked{% endif %}>
+                            Hot
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- HEALTH CONDITIONS -->
+                {% set health_list = data["Health Considerations"].split(',') if data and data["Health Considerations"] else [] %}
+
+                <div>
+
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        Health Considerations
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="checkbox" name="Health" value="kidney" class="mr-2"
+                                   {% if "kidney" in health_list %}checked{% endif %}>
+                            Kidney problems
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="checkbox" name="Health" value="heart" class="mr-2"
+                                   {% if "heart" in health_list %}checked{% endif %}>
+                            Heart condition
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="checkbox" name="Health" value="sick" class="mr-2"
+                                   {% if "sick" in health_list %}checked{% endif %}>
+                            Currently sick
+                        </label>
+
+                        <label class="border rounded-xl p-4 hover:border-sky-700 cursor-pointer">
+                            <input type="checkbox" name="Health" value="none" class="mr-2"
+                                   {% if "none" in health_list %}checked{% endif %}>
+                            None of the above
+                        </label>
+
+                    </div>
+
+                    <p class="text-sm text-red-500 mt-4">
+                        If you have a medical condition affecting hydration,
+                        follow your doctor's advice.
+                    </p>
+
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="flex gap-4 pt-4">
+
+                    <a href="/account"
+                       class="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
+
+                        Cancel
+                    </a>
+
+                    <button
+                        type="submit"
+                        class="bg-sky-700 hover:bg-sky-800 text-white px-8 py-3 rounded-xl shadow-lg transition"
+                    >
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
