@@ -8,17 +8,126 @@
 </head>
 {% include "components/navbar.html.jinja"%}
 
-<body class="font-family: Arial; margin: 40px; }.form-container { max-width: 500px; margin: auto; }.error { color: red; }.success { color: green; }">
-<div class="flex items-center min-h-screen bg-white">
-<div class="container mx-auto">
-<div class="max-w-md mx-auto my-10">
-<div class="text-center">
-<h2>Create a New Group</h2>
+<style>
 
-  
-    
-  
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial, Helvetica, sans-serif;
+        }
 
+        body{
+            height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+
+            background:
+            linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)),
+            url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e');
+
+            background-size:cover;
+            background-position:center;
+        }
+
+        .container{
+
+            width:400px;
+            padding:40px;
+
+            background:rgba(255,255,255,0.15);
+
+            backdrop-filter:blur(12px);
+
+            border:1px solid rgba(255,255,255,0.2);
+
+            border-radius:20px;
+
+            box-shadow:0 8px 32px rgba(0,0,0,0.3);
+
+            text-align:center;
+
+            color:white;
+        }
+
+        h1{
+            margin-bottom:25px;
+            font-size:32px;
+            letter-spacing:1px;
+        }
+
+        input{
+
+            width:100%;
+            padding:15px;
+
+            border:none;
+            border-radius:12px;
+
+            outline:none;
+
+            margin-bottom:20px;
+
+            background:rgba(255,255,255,0.2);
+
+            color:white;
+
+            font-size:16px;
+        }
+
+        input::placeholder{
+            color:#e0e0e0;
+        }
+
+        button{
+
+            width:100%;
+            padding:15px;
+
+            border:none;
+            border-radius:12px;
+
+            background:#00b4ff;
+
+            color:white;
+
+            font-size:16px;
+            font-weight:bold;
+
+            cursor:pointer;
+
+            transition:0.3s;
+        }
+
+        button:hover{
+            background:#0090cc;
+            transform:scale(1.03);
+        }
+
+    </style>
+
+</head>
+<body>
+
+    <div class="container">
+
+        <h1>Create Group</h1>
+
+        <form method="POST">
+
+            <input type="text"
+                   name="group_name"
+                   placeholder="Enter Group Name"
+                   required>
+
+            <button type="submit">
+                Create Group
+            </button>
+
+        </form>
+
+    </div>
 
 </body>
 </html>

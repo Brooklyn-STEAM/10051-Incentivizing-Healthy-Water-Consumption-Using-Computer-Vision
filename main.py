@@ -43,6 +43,7 @@ class User(UserMixin):
 
 
 
+
 @login_manager.user_loader
 def load_user(user_id):
     connection = connect_db()
@@ -70,15 +71,6 @@ def connect_db():
     return conn
 
 
-tracker_data = {
-    "Monday":0,
-    "Tuesday":0,
-    "Wednesday":0,
-    "Thursday":0,
-    "Friday":0,
-    "Saturday":0,
-    "Sunday":0
-} #used for the tracker data
 
 #All of this is connect routes for the website, they will render the html pages that are in the templates folder. 
 @app.route("/")
@@ -164,7 +156,7 @@ def register():
                         connection.close()
                         return render_template("register.html.jinja")
             return redirect("/healthdata")
-        
+
     return render_template("register.html.jinja")
 
 
@@ -282,33 +274,10 @@ def health_data():
 
 
 #for account page(second homepage)------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@app.route("/Accountpage",methods=["GET", "POST"])
+@app.route("/Accountpage", methods=["GET", "POST"])
 @login_required
 def account_page():
-    if request.method == "POST":
-        file = request.files["picture"]
-        if file:
-            filename = secure_filename(file.filename)
-
-            # save file to static folder
-            file.save(os.path.join("static/profile_pics", filename))
-
-            # store filename (example: simple user object)
-            current_user.profile_image = filename
-            connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute(""" UPDATE User
-                      SET profile_image =%s
-                      WHERE id = %s""", (filename, current_user.id))
-
-        connection.commit()
-
-                
-    
-    return render_template("Accountpage.html.jinja",User=current_user.id)
-
-
-
+    return render_template("Accountpage.html.jinja")
 
 #for the friends page------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.route('/friends')
@@ -329,6 +298,232 @@ def friends_list():
 
      return render_template('friends.html.jinja', friends=results)
 
+@app.route('/messages/<int:user_id2>', methods=['GET', 'POST'])
+@login_required
+def messages(user_id2):
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    current_user_id = current_user.id
+
+    # CHECK IF USERS ARE FRIENDS
+    cursor.execute("""
+        SELECT *
+        FROM friendships
+        WHERE
+            (user_id1 = %s AND user_id2 = %s)
+            OR
+            (user_id1 = %s AND user_id2 = %s)
+    """, (
+        current_user_id,
+        user_id2,
+        user_id2,
+        current_user_id
+    ))
+
+    friendship = cursor.fetchone()
+
+    # BLOCK ACCESS IF NOT FRIENDS
+    if not friendship:
+        connection.close()
+        return "You are not friends with this user."
+
+    # SEND MESSAGE
+    if request.method == 'POST':
+
+        content = request.form.get('message')
+
+        if content:
+
+            cursor.execute("""
+                INSERT INTO Messages
+                (sender_id, receiver_id, content)
+                VALUES (%s, %s, %s)
+            """, (
+                current_user_id,
+                user_id2,
+                content
+            ))
+
+            connection.commit()
+
+    # GET CONVERSATION
+    cursor.execute("""
+        SELECT *
+        FROM Messages
+        WHERE
+            (sender_id = %s AND receiver_id = %s)
+            OR
+            (sender_id = %s AND receiver_id = %s)
+        ORDER BY timestamp ASC
+    """, (
+        current_user_id,
+        user_id2,
+        user_id2,
+        current_user_id
+    ))
+
+    messages = cursor.fetchall()
+
+    connection.close()
+
+    return render_template(
+        'messages.html.jinja',
+        messages=messages,
+        user_id2=user_id2
+    )
+@app.route('/create_group', methods=['GET', 'POST'])
+@login_required
+def create_group():
+
+    if request.method == 'POST':
+
+        group_name = request.form['group_name']
+
+        connection = connect_db()
+        cursor = connection.cursor()
+
+        # create group
+        cursor.execute(
+            """
+            INSERT INTO Groups (name, created_by)
+            VALUES (%s, %s)
+            """,
+            (group_name, current_user.id)
+        )
+
+        connection.commit()
+
+        # get new group id
+        group_id = cursor.lastrowid
+
+        # add creator to group
+        cursor.execute(
+            """
+            INSERT INTO Groupmember (user_id, group_id)
+            VALUES (%s, %s)
+            """,
+            (current_user.id, group_id)
+        )
+
+        connection.commit()
+
+        cursor.close()
+        connection.close()
+
+        return redirect(f'/group/{group_id}')
+
+    return render_template('create_group.html.jinja')
+
+
+@app.route('/group/<int:group_id>', methods=['GET', 'POST'])
+@login_required
+def group_chat(group_id):
+    
+
+    connection = connect_db()
+
+    # dictionary=True lets you use group.name in Jinja
+    cursor = connection.cursor()
+
+    # get group info
+    cursor.execute(
+        """
+        SELECT * FROM Groups
+        WHERE id = %s
+        """,
+        (group_id,)
+    )
+
+    group = cursor.fetchone()
+
+    # if group does not exist
+    if not group:
+
+        cursor.close()
+        connection.close()
+
+        return "Group not found", 404
+
+    # send message
+    if request.method == 'POST':
+
+        text = request.form['message']
+        content=text
+
+        cursor.execute(
+    """
+    INSERT INTO Messages
+    (sender_id, group_id, content)
+    VALUES (%s, %s, %s)
+    """,
+    (current_user.id, group_id, content)
+)
+
+        connection.commit()
+
+        return redirect(f'/group/{group_id}')
+
+    # get all group messages
+    cursor.execute(
+        """
+        SELECT *
+        FROM Messages
+        WHERE group_id = %s
+        ORDER BY timestamp ASC
+        """,
+        (group_id,)
+    )
+
+    messages = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return render_template(
+        'group_chat.html.jinja',
+        group=group,
+        messages=messages
+    )
+
+
+@app.route("/add_to_group/<int:group_id>", methods=["GET", "POST"])
+@login_required
+def add_to_group(group_id):
+
+    connection = connect_db()
+
+    if request.method == "POST":
+        user_id = request.form.get("user_id")
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO Groupmember(group_id, user_id)
+            VALUES (%s, %s)
+            """,
+            (group_id, user_id)
+        )
+
+        connection.commit()
+
+        return redirect(url_for("group_chat", group_id=group_id))
+
+    # GET request
+    cursor = connection.cursor()
+
+    cursor.execute(""" SELECT * FROM User """)
+
+    results= cursor.fetchall()
+    connection.close()
+
+    return render_template(
+        "add_to_group.html.jinja",
+        User=results,
+        group_id=group_id,
+    )
 @app.route('/addfriends' , methods=['GET', 'POST'])
 @login_required
 def add_friends():
@@ -374,6 +569,60 @@ def remove_friend(friend_id):
 
 
 
+@app.route("/typing/<int:group_id>", methods=["POST"])
+@login_required
+def typing(group_id):
+
+    typing_status = request.form.get("typing")
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE Groupmember
+        SET typing = %s
+        WHERE group_id = %s
+        AND user_id = %s
+        """,
+        (
+            typing_status,
+            group_id,
+            session["user_id"]
+        )
+    )
+
+    connection.commit()
+
+    return "", 204
+
+@app.route("/typing/<int:group_id>", methods=["POST"])
+@login_required
+def typing(group_id):
+
+    typing_status = request.form.get("typing")
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE Groupmember
+        SET typing = %s
+        WHERE group_id = %s
+        AND user_id = %s
+        """,
+        (
+            typing_status,
+            group_id,
+            session["user_id"]
+        )
+    )
+
+    connection.commit()
+
+    return "", 204
+
 
 
 
@@ -409,7 +658,7 @@ def tracker():
         result = cursor.fetchone()
         daily_goal = (result or {}).get("Cups") or 0
 
-
+        # 2. Cups drank today
         cursor.execute("""
             SELECT COALESCE(SUM(Cups), 0) AS drank_today
             FROM `Water Consumption`
@@ -419,8 +668,12 @@ def tracker():
         result = cursor.fetchone()
         cups_drank = (result or {}).get("drank_today", 0)
 
-        cups_left = max(daily_goal - cups_drank, 0)
+        # 3. Remaining cups
+        daily_goal = int(daily_goal)
+        cups_drank = int(cups_drank)
 
+        cups_left = max(daily_goal - cups_drank, 0)
+        # 4. Weekly data (FIXED)
         cursor.execute("""
             SELECT 
                 DAYNAME(Timestamp) AS day,
@@ -440,13 +693,14 @@ def tracker():
             "Thursday": 0, "Friday": 0, "Saturday": 0, "Sunday": 0
         }
 
+        # NOTE: row["day"] is a DATE, not weekday name
         for row in weekly_rows:
             day_name = row["day"]
             tracker_data[day_name] = row["total_cups"]
 
         days = list(tracker_data.keys())
 
-        # ⭐ ADD THIS
+        # 5. Points
         cursor.execute("""
             SELECT COALESCE(SUM(Points), 0) AS total_points
             FROM `Water Consumption`

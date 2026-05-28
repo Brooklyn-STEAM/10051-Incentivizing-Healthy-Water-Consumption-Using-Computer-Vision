@@ -19,103 +19,24 @@
     .tag { font-size: .7rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
   </style>
 </head>
-<body class="min-h-screen" style="background: #f0f7ff;">
 
-{% include "components/navbar.html.jinja" %}
+<body class="bg-gradient-to-b to-white min-h-screen flex items-center justify-center p-6">
+{% include "components/navbar.html.jinja"%}
+  
+<div class=" w-160 h-80 grid md:grid-cols-2 gap-6">
 
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <div class="max-w-7xl mx-auto mt-4 px-4">
-      {% for msg in messages %}
-        <div class="bg-green-100 border border-green-300 text-green-800 px-4 py-2 rounded-xl mb-2 text-sm">{{ msg }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
+<div class="bg-blue-300 rounded-[40px] shadow-xl p-8 flex flex-col justify-between h-75 w-80 -mt-50">
 
-<div class="max-w-7xl mx-auto px-4 py-8">
 
-  <!-- ── HEADER ── -->
-  <div class="flex items-center justify-between mb-8">
-    <div class="flex items-center gap-4">
-      <!-- Profile pic (clickable to upload) -->
-      <form method="POST" enctype="multipart/form-data" id="picForm">
-        <input type="file" id="fileInput" name="picture" hidden onchange="document.getElementById('picForm').submit()">
-        <img
-          src="{{ url_for('static', filename='profile_pics/' ~ (User.profile_image or 'default.jpg')) }}"
-          onclick="document.getElementById('fileInput').click()"
-          class="w-14 h-14 rounded-full object-cover ring-2 ring-sky-300 cursor-pointer hover:opacity-80 transition"
-          title="Click to change photo"
-        />
-      </form>
-      <div>
-        <h1 class="text-2xl font-bold text-sky-800">Water Tracker</h1>
-        <p class="text-sm text-sky-500">Hi, {{ current_user.name }} — keep it up!</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <a href="/tracker" class="bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">+ Log Water</a>
-      <a href="/wheelofdrinks" class="bg-amber-400 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">Spin Wheel</a>
-    </div>
+ <div class="h-35 w-35 rounded-full bg-white flex-center items-center justify-center text-center text-sm pt-12 ">
+  Edit Profile
   </div>
 
-  <!-- ── TOP STAT CARDS ── -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-
-    <!-- Water Today -->
-    <div class="stat-card card flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <span class="text-2xl">💧</span>
-        <a href="/tracker" class="text-xs text-sky-400 hover:underline">Track →</a>
-      </div>
-      <div>
-        <p class="text-3xl font-bold text-sky-700">{{ cups_drank | round(1) }} <span class="text-base font-normal text-sky-400">cups</span></p>
-        <p class="text-xs text-gray-400 mt-1">Water Today</p>
-        <p class="text-xs text-sky-500 font-medium">{{ goal_pct }}% of goal</p>
-      </div>
-      <div class="progress-bar mt-1"><div class="progress-fill" style="width:{{ goal_pct }}%"></div></div>
-    </div>
-
-    <!-- Points -->
-    <div class="stat-card card flex flex-col gap-2" style="background: linear-gradient(135deg,#fffbeb,#fef3c7);">
-      <div class="flex items-center justify-between">
-        <span class="text-2xl">🏆</span>
-        <a href="/wheelofdrinks" class="text-xs text-amber-400 hover:underline">Spend →</a>
-      </div>
-      <div>
-        <p class="text-3xl font-bold text-amber-600">{{ total_points }}</p>
-        <p class="text-xs text-gray-400 mt-1">Total Points</p>
-        <p class="text-xs text-amber-500 font-medium">Keep it up!</p>
-      </div>
-    </div>
-
-    <!-- Daily Goal -->
-    <div class="stat-card card flex flex-col gap-2" style="background: linear-gradient(135deg,#f0fdf4,#dcfce7);">
-      <div class="flex items-center justify-between">
-        <span class="text-2xl">🎯</span>
-        <a href="/healthdata" class="text-xs text-green-400 hover:underline">Edit →</a>
-      </div>
-      <div>
-        <p class="text-3xl font-bold text-green-600">{{ daily_goal }} <span class="text-base font-normal text-green-400">cups</span></p>
-        <p class="text-xs text-gray-400 mt-1">Daily Goal</p>
-        <p class="text-xs text-green-500 font-medium">≈ {{ water_oz_goal | round(0) | int }} oz / day</p>
-      </div>
-    </div>
-
-    <!-- Rewards -->
-    <div class="stat-card card flex flex-col gap-2" style="background: linear-gradient(135deg,#fdf4ff,#f3e8ff);">
-      <div class="flex items-center justify-between">
-        <span class="text-2xl">🎁</span>
-        <a href="/catalog" class="text-xs text-purple-400 hover:underline">View →</a>
-      </div>
-      <div>
-        <p class="text-3xl font-bold text-purple-600">{{ rewards_earned }}</p>
-        <p class="text-xs text-gray-400 mt-1">Rewards Earned</p>
-        <p class="text-xs text-purple-500 font-medium">
-          {% if streak > 0 %}{{ streak }}-day streak!{% else %}Start your streak!{% endif %}
-        </p>
-      </div>
-    </div>
+    {%if not current_user.is_authenticated %}
+ <a href="/login" class=" px-7 gap-2"></a>
+    {%else%}
+<h1 class="text-center font-bold text-2xl text-white">Hi, {{current_user.username}}</h1>
+    {%endif%}
 
   </div>
 
@@ -316,6 +237,7 @@
   </div>
 
 </div>
+
 
 <!-- ── CHARTS JS ── -->
 <script>

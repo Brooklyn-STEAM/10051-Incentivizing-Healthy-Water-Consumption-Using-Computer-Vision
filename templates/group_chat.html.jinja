@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-cyan-100 min-h-screen flex flex-col">
+
+{% include "components/navbar.html.jinja"%}
+
+<div class="max-w-3xl mx-auto w-full p-4">
+
+    <!-- HEADER -->
+    <div class="bg-white rounded-2xl shadow-lg p-5 flex justify-between items-center mb-6">
+
+        <div>
+            <h1 class="text-2xl font-bold text-blue-600">
+                💧 {{ group.Name }}
+            </h1>
+            <p class="text-gray-500 text-sm">
+                Water Intake Tracker
+            </p>
+        </div>
+
+        <a href="{{ url_for('add_to_group', group_id=group.ID) }}"
+           class="bg-blue-500 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-600 transition">
+            + Add User
+        </a>
+
+    </div>
+
+    <!-- PROGRESS SECTION -->
+    <div class="bg-white rounded-2xl shadow p-5 mb-6">
+
+        <div class="flex justify-between mb-2">
+            <span class="text-gray-600 font-medium">Group Progress</span>
+            <span class="text-blue-600 font-bold">{{ daily_goal }}</span>
+        </div>
+
+        <div class="w-full bg-blue-100 rounded-full h-4">
+            <div class="bg-blue-500 h-4 rounded-full w-3/4"></div>
+        </div>
+
+    </div>
+
+    <!-- WATER ENTRIES (your messages turned into tracker logs) -->
+    <div class="space-y-4 mb-6">
+
+        {% for message in messages %}
+
+            {% if message.sender_id == current_user.id %}
+
+                <!-- YOUR ENTRY -->
+                <div class="flex justify-end">
+
+                    <div class="bg-blue-500 text-white p-4 rounded-2xl shadow max-w-xs">
+                        💧 {{ message.content }}
+
+                        <div class="text-xs text-blue-100 mt-1">
+                            {{ message.timestamp.strftime('%I:%M %p') }}
+                        </div>
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <!-- OTHER USER ENTRY -->
+                <div class="flex justify-start">
+
+                    <div class="bg-white p-4 rounded-2xl shadow max-w-xs">
+                        🚰 {{ message.content }}
+
+                        <div class="text-xs text-gray-400 mt-1">
+                            {{ message.timestamp.strftime('%I:%M %p') }}
+                        </div>
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+<!-- INPUT FIXED BAR -->
+<div class="fixed bottom-0 w-full bg-white border-t shadow-lg p-4">
+
+    <form method="POST" class="max-w-3xl mx-auto flex gap-2">
+
+        <input
+            type="text"
+            name="message"
+            placeholder="Log water intake (e.g. 2 cups)"
+            class="flex-1 border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-400"
+            required
+        >
+
+        <button
+            type="submit"
+            class="bg-blue-500 text-white px-6 py-2 rounded-xl hover:bg-blue-600"
+        >
+            Add
+        </button>
+
+    </form>
+
+</div>
+
+</body>
+</html>
