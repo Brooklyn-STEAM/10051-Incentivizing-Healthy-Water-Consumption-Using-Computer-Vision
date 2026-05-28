@@ -33,7 +33,10 @@
             
                 <li class="p-3 hover:bg-gray-50 flex justify-between items-center" >
                    {{ friend.username }}
-                     
+               
+                <a href="{{ url_for('messages', user_id2=friend.ID)}}">
+                    Message
+                    </a>
                      <form action="/remove_friend/{{ friend.ID }}" method="POST" style="display:inline;">
             <button type="submit">Remove</button>
         </form>
