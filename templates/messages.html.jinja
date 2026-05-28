@@ -1,0 +1,216 @@
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #001f3f, #0074D9);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+
+        /* Top navbar */
+        .chat-header {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Chat area */
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Message bubbles */
+        .message {
+            max-width: 60%;
+            padding: 12px 18px;
+            margin: 10px 0;
+            border-radius: 20px;
+            animation: floatUp 0.3s ease;
+        }
+
+        /* Your messages */
+        .me {
+            align-self: flex-end;
+            background: #00cfff;
+            color: #002b36;
+            border-bottom-right-radius: 5px;
+        }
+
+        /* Friend messages */
+        .friend {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            border-bottom-left-radius: 5px;
+        }
+
+        /* Input area */
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 25px;
+            outline: none;
+        }
+
+        .chat-input button {
+            margin-left: 10px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            background: #00cfff;
+            color: #003344;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Floating animation */
+        @keyframes floatUp {
+            from {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Bubble background effect */
+        .bubble {
+            position: fixed;
+            bottom: -100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            animation: rise 10s infinite ease-in;
+        }
+
+        @keyframes rise {
+            from {
+                transform: translateY(0);
+            }
+            to {
+                transform: translateY(-120vh);
+            }
+        }
+
+    </style>
+</head>
+
+{% include "components/navbar.html.jinja"%}
+
+
+
+  <div class="flex items-center min-h-screen bg-gray">
+  <div class="container mx-auto">
+  <div class="max-w-md mx-auto my-10">
+
+  <body>
+
+    <!-- Water bubbles -->
+    <div class="bubble" style="width:40px;height:40px;left:10%;animation-duration:8s;"></div>
+    <div class="bubble" style="width:20px;height:20px;left:40%;animation-duration:12s;"></div>
+    <div class="bubble" style="width:60px;height:60px;left:70%;animation-duration:10s;"></div>
+
+    <!-- Header -->
+    <div class="chat-header">
+        🌊 Chat with {{ username }}
+    </div>
+    <div class ="bg-blue-600 text-white p-4 shadow-md flex flex-row-reverse">
+    <a href="/create_group">
+    <button class="inline bg-white border-2 border-blue-500 text-blue-500 px-1 py-1 rounded-full font-semibold hover:bg-blue-500 hover:text-white transition">Create Group Chat</button>
+    </a>
+    </div>
+
+    <!-- MESSAGE AREA -->
+   <div class="chat-container">
+        {% for message in messages %}
+
+            {% if message.sender_id == current_user.id %}
+
+                <!-- SENT MESSAGE -->
+                <div class="flex justify-end">
+
+                    <div class="bg-blue-500 text-white p-3 rounded-2xl max-w-xs shadow">
+                        {{ message.content }}
+
+                        <div class="text-xs text-blue-100 mt-1">
+                            {{ message.timestamp.strftime('%I:%M %p') }}
+                        </div>
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <!-- RECEIVED MESSAGE -->
+                <div class="flex justify-start">
+
+                    <div class="bg-white p-3 rounded-2xl max-w-xs shadow">
+                        {{ message.content }}
+
+                        <div class="text-xs text-gray-400 mt-1">
+                            {{ message.timestamp.strftime('%I:%M %p') }}
+                        </div>
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+        {% endfor %}
+
+    </div>
+
+    <!-- INPUT AREA -->
+<form class="chat-input" method="POST">
+
+    <input
+        type="text"
+        name="message"
+        placeholder="Send a wave... 🌊"
+        required
+    >
+
+    <button type="submit">Send</button>
+
+</form>
+
+</body>
+</html>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
